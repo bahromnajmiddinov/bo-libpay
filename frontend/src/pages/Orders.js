@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { orderService } from '../services/orderService';
 import { productService } from '../services/productService';
 import { customerService } from '../services/customerService';
 import { toast } from 'react-toastify';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
 const Orders = () => {
   const [showModal, setShowModal] = useState(false);
@@ -11,6 +17,16 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState('order_date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [amountRange, setAmountRange] = useState({ min: '', max: '' });
   const queryClient = useQueryClient();
 
   // Fetch orders
@@ -24,6 +40,101 @@ const Orders = () => {
 
   // Extract orders array from paginated response
   const orders = ordersData?.results || ordersData || [];
+
+  // Enhanced filtering and sorting
+  const filteredAndSortedOrders = useMemo(() => {
+    let filtered = orders;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const normalizedQuery = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((o) => {
+        const customerName = (o.customer?.full_name || '').toString().toLowerCase();
+        const productName = (o.product?.name || '').toString().toLowerCase();
+        const orderId = o.id.toString();
+        return customerName.includes(normalizedQuery) || 
+               productName.includes(normalizedQuery) || 
+               orderId.includes(normalizedQuery);
+      });
+    }
+
+    // Status filter
+    if (statusFilter) {
+      filtered = filtered.filter((o) => o.status === statusFilter);
+    }
+
+    // Customer filter
+    if (customerFilter) {
+      filtered = filtered.filter((o) => {
+        const customerId = o.customer?.id || o.customer_id;
+        return customerId && customerId.toString() === customerFilter;
+      });
+    }
+
+    // Product filter
+    if (productFilter) {
+      filtered = filtered.filter((o) => {
+        const productId = o.product?.id || o.product_id;
+        return productId && productId.toString() === productFilter;
+      });
+    }
+
+    // Date range filter
+    if (dateRange.start) {
+      filtered = filtered.filter((o) => new Date(o.order_date) >= new Date(dateRange.start));
+    }
+    if (dateRange.end) {
+      filtered = filtered.filter((o) => new Date(o.order_date) <= new Date(dateRange.end));
+    }
+
+    // Amount range filter
+    if (amountRange.min !== '') {
+      filtered = filtered.filter((o) => o.total_amount >= parseFloat(amountRange.min));
+    }
+    if (amountRange.max !== '') {
+      filtered = filtered.filter((o) => o.total_amount <= parseFloat(amountRange.max));
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'order_date':
+          aValue = new Date(a.order_date || 0);
+          bValue = new Date(b.order_date || 0);
+          break;
+        case 'total_amount':
+          aValue = a.total_amount || 0;
+          bValue = b.total_amount || 0;
+          break;
+        case 'customer':
+          aValue = (a.customer?.full_name || '').toLowerCase();
+          bValue = (b.customer?.full_name || '').toLowerCase();
+          break;
+        case 'product':
+          aValue = (a.product?.name || '').toLowerCase();
+          bValue = (b.product?.name || '').toLowerCase();
+          break;
+        case 'status':
+          aValue = a.status?.toLowerCase() || '';
+          bValue = b.status?.toLowerCase() || '';
+          break;
+        default:
+          aValue = new Date(a.order_date || 0);
+          bValue = new Date(b.order_date || 0);
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [orders, searchQuery, statusFilter, customerFilter, productFilter, dateRange, amountRange, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedOrders.length / pageSize));
+  const paginatedOrders = filteredAndSortedOrders.slice((page - 1) * pageSize, page * pageSize);
 
   // Fetch products for order creation
   const { data: productsData } = useQuery('products', productService.getProducts);
@@ -252,6 +363,64 @@ const Orders = () => {
     setShowPaymentModal(true);
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleExport = (format) => {
+    const dataToExport = filteredAndSortedOrders.map(order => ({
+      'Order ID': order.id,
+      'Customer': order.customer?.full_name || 'N/A',
+      'Product': order.product?.name || 'N/A',
+      'Total Amount': order.total_amount,
+      'Down Payment': order.down_payment,
+      'Status': order.status,
+      'Installments': order.installment_count,
+      'Order Date': order.order_date ? new Date(order.order_date).toLocaleDateString() : 'N/A',
+      'Approved Date': order.approved_date ? new Date(order.approved_date).toLocaleDateString() : 'N/A'
+    }));
+
+    if (format === 'csv') {
+      const csvContent = [
+        Object.keys(dataToExport[0]).join(','),
+        ...dataToExport.map(row => Object.values(row).map(value => `"${value}"`).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } else if (format === 'json') {
+      const jsonContent = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orders_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+    
+    toast.success(`Orders exported as ${format.toUpperCase()} successfully!`);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('');
+    setCustomerFilter('');
+    setProductFilter('');
+    setDateRange({ start: '', end: '' });
+    setAmountRange({ min: '', max: '' });
+    setSortBy('order_date');
+    setSortOrder('desc');
+    setPage(1);
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -278,53 +447,233 @@ const Orders = () => {
   }
 
   return (
+    <div className="fade-in">
+      {/* Enhanced Header */}
+      <div className="gradient-bg text-white p-4 rounded-3 mb-4" style={{ borderRadius: '20px' }}>
+        <div className="d-flex justify-content-between align-items-center">
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>Orders Management</h1>
+            <h1 className="mb-2" style={{ fontSize: '2.5rem', fontWeight: '700' }}>
+              📋 Orders Management
+            </h1>
+            <p className="mb-0" style={{ opacity: '0.9', fontSize: '1.1rem' }}>
+              Manage orders, payments, and installment tracking with advanced analytics
+            </p>
+          </div>
+          <div className="d-flex gap-2">
         <button
-          className="btn btn-primary"
+              className="btn-modern btn-modern-primary"
           onClick={() => {
             setEditingOrder(null);
             resetForm();
             setShowModal(true);
           }}
         >
-          Create Order
+              ➕ Create Order
         </button>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Enhanced Search and Filters */}
+      <div className="card-modern slide-up mb-4">
+        <div className="card-body">
+          <div className="row mb-3">
+            <div className="col-md-3">
+              <label className="form-label">🔍 Search Orders</label>
+              <input
+                type="search"
+                className="form-control"
+                placeholder="Search by customer, product or order ID..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">📊 Sort By</label>
+              <select
+                className="form-control"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="order_date">Order Date</option>
+                <option value="total_amount">Amount</option>
+                <option value="customer">Customer</option>
+                <option value="product">Product</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">🔄 Order</label>
+              <select
+                className="form-control"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">📈 Export</label>
+              <div className="d-flex gap-1">
+                <button
+                  className="btn btn-sm btn-success"
+                  onClick={() => handleExport('csv')}
+                  title="Export as CSV"
+                >
+                  CSV
+                </button>
+                <button
+                  className="btn btn-sm btn-info"
+                  onClick={() => handleExport('json')}
+                  title="Export as JSON"
+                >
+                  JSON
+                </button>
+              </div>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">🧹 Actions</label>
+              <button
+                className="btn btn-sm btn-outline-secondary w-100"
+                onClick={clearFilters}
+                title="Clear all filters"
+              >
+                Clear Filters
+              </button>
+            </div>
+            <div className="col-md-1">
+              <label className="form-label">📊 Results</label>
+              <div className="d-flex align-items-center h-100">
+                <span className="badge-modern badge-info-modern">
+                  {filteredAndSortedOrders.length}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-md-2">
+              <label className="form-label">📋 Status</label>
+              <select
+                className="form-control"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              >
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">👤 Customer</label>
+              <select
+                className="form-control"
+                value={customerFilter}
+                onChange={(e) => { setCustomerFilter(e.target.value); setPage(1); }}
+              >
+                <option value="">All Customers</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">📦 Product</label>
+              <select
+                className="form-control"
+                value={productFilter}
+                onChange={(e) => { setProductFilter(e.target.value); setPage(1); }}
+              >
+                <option value="">All Products</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">📅 Start Date</label>
+              <input
+                type="date"
+                className="form-control"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">📅 End Date</label>
+              <input
+                type="date"
+                className="form-control"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">💰 Amount Range</label>
+              <div className="d-flex gap-1">
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="Min"
+                  value={amountRange.min}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
+                />
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="Max"
+                  value={amountRange.max}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Stats Cards */}
       {stats && (
         <div className="row mb-4">
           <div className="col-md-3">
-            <div className="card">
-              <div className="card-body text-center">
-                <h3 className="text-primary">{stats.orders?.total || 0}</h3>
-                <p className="text-muted">Total Orders</p>
+            <div className="metric-card info slide-up">
+              <div className="metric-value">{stats.orders?.total || 0}</div>
+              <div className="metric-label">Total Orders</div>
+              <div className="metric-subtext">
+                {stats.orders?.active || 0} Active Orders
               </div>
             </div>
           </div>
           <div className="col-md-3">
-            <div className="card">
-              <div className="card-body text-center">
-                <h3 className="text-warning">{stats.orders?.pending || 0}</h3>
-                <p className="text-muted">Pending Orders</p>
+            <div className="metric-card warning slide-up">
+              <div className="metric-value">{stats.orders?.pending || 0}</div>
+              <div className="metric-label">Pending Orders</div>
+              <div className="metric-subtext">
+                Requires approval
               </div>
             </div>
           </div>
           <div className="col-md-3">
-            <div className="card">
-              <div className="card-body text-center">
-                <h3 className="text-info">{stats.orders?.active || 0}</h3>
-                <p className="text-muted">Active Orders</p>
+            <div className="metric-card success slide-up">
+              <div className="metric-value">{stats.orders?.active || 0}</div>
+              <div className="metric-label">Active Orders</div>
+              <div className="metric-subtext">
+                In progress
               </div>
             </div>
           </div>
           <div className="col-md-3">
-            <div className="card">
-              <div className="card-body text-center">
-                <h3 className="text-success">{formatCurrency(stats.payments?.total_revenue || 0)}</h3>
-                <p className="text-muted">Total Revenue</p>
+            <div className="metric-card danger slide-up">
+              <div className="metric-value">{formatCurrency(stats.payments?.total_revenue || 0)}</div>
+              <div className="metric-label">Total Revenue</div>
+              <div className="metric-subtext">
+                All time earnings
               </div>
             </div>
           </div>
@@ -348,30 +697,40 @@ const Orders = () => {
         </div>
       )}
 
-      {/* Orders Table */}
-      <div className="card">
+      {/* Enhanced Orders Table */}
+      <div className="card-modern slide-up">
         <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="chart-title">📋 Orders List</h6>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge-modern badge-info-modern">
+                Showing {Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedOrders.length, page * pageSize)} of {filteredAndSortedOrders.length}
+              </span>
+            </div>
+          </div>
           <div className="table-responsive">
-            <table className="table">
+            <table className="table table-modern">
               <thead>
                 <tr>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Product</th>
-                  <th>Total Amount</th>
-                  <th>Down Payment</th>
-                  <th>Installments</th>
-                  <th>Status</th>
-                  <th>Order Date</th>
-                  <th>Actions</th>
+                  <th>📋 Order ID</th>
+                  <th>👤 Customer</th>
+                  <th>📦 Product</th>
+                  <th>💰 Total Amount</th>
+                  <th>💳 Down Payment</th>
+                  <th>📅 Installments</th>
+                  <th>📊 Status</th>
+                  <th>📅 Order Date</th>
+                  <th>⚙️ Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(orders) && orders.length > 0 ? (
-                  orders.map((order) => (
+                {Array.isArray(paginatedOrders) && paginatedOrders.length > 0 ? (
+                  paginatedOrders.map((order) => (
                     <tr key={order.id}>
                       <td>
-                        <strong>#{order.id}</strong>
+                        <span className="badge-modern badge-info-modern">
+                          #{order.id}
+                        </span>
                       </td>
                       <td>{order.customer?.full_name}</td>
                       <td>
@@ -381,11 +740,24 @@ const Orders = () => {
                           <small className="text-muted">Qty: {order.quantity}</small>
                         </div>
                       </td>
-                      <td>{formatCurrency(order.total_amount)}</td>
-                      <td>{formatCurrency(order.down_payment)}</td>
-                      <td>{order.installment_count} months</td>
                       <td>
-                        <span className={`badge ${getStatusBadgeClass(order.status)}`}>
+                        <span className="fw-bold text-success">
+                          {formatCurrency(order.total_amount)}
+                        </span>
+                      </td>
+                      <td>{formatCurrency(order.down_payment)}</td>
+                      <td>
+                        <span className="badge-modern badge-warning-modern">
+                          {order.installment_count} months
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge-modern ${
+                          order.status === 'completed' ? 'badge-success-modern' :
+                          order.status === 'active' ? 'badge-info-modern' :
+                          order.status === 'approved' ? 'badge-warning-modern' :
+                          'badge-danger-modern'
+                        }`}>
                           {order.status}
                         </span>
                       </td>
@@ -397,7 +769,7 @@ const Orders = () => {
                             onClick={() => handleViewDetails(order)}
                             title="View Details"
                           >
-                            Details
+                            📋 Details
                           </button>
                           {order.status === 'pending' && (
                             <button
@@ -405,7 +777,7 @@ const Orders = () => {
                               onClick={() => handleApprove(order)}
                               title="Approve Order"
                             >
-                              Approve
+                              ✅ Approve
                             </button>
                           )}
                           <button
@@ -413,21 +785,21 @@ const Orders = () => {
                             onClick={() => handleRecordPayment(order)}
                             title="Record Payment"
                           >
-                            Payment
+                            💰 Payment
                           </button>
                           <button
                             className="btn btn-sm btn-outline-secondary"
                             onClick={() => handleEdit(order)}
                             title="Edit Order"
                           >
-                            Edit
+                            ✏️ Edit
                           </button>
                           <button
                             className="btn btn-sm btn-outline-danger"
                             onClick={() => handleDelete(order)}
                             title="Delete Order"
                           >
-                            Delete
+                            🗑️ Delete
                           </button>
                         </div>
                       </td>
@@ -435,13 +807,38 @@ const Orders = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="text-center text-muted py-4">
-                      No orders found. Click "Create Order" to create your first order.
+                    <td colSpan="9" className="text-center py-4">
+                      <div className="empty-state">
+                        <div className="empty-state-icon">📋</div>
+                        <div className="empty-state-title">No Orders Found</div>
+                        <div className="empty-state-text">
+                          No orders match your current filters. Try adjusting your search criteria.
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+        <div className="card-footer d-flex justify-content-between align-items-center">
+          <div>
+            <small className="text-muted">Showing {Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedOrders.length, page * pageSize)} of {filteredAndSortedOrders.length} orders</small>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <div className="btn-group">
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => handlePageChange(page - 1)} disabled={page <= 1}>Prev</button>
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => handlePageChange(page + 1)} disabled={page >= totalPages}>Next</button>
+            </div>
+
+            <select className="form-select form-select-sm" value={pageSize} onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
           </div>
         </div>
       </div>

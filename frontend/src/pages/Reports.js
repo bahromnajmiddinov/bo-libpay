@@ -3,6 +3,13 @@ import { useQuery } from 'react-query';
 import { orderService } from '../services/orderService';
 import { productService } from '../services/productService';
 import { customerService } from '../services/customerService';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 const Reports = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -12,6 +19,7 @@ const Reports = () => {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [exportFormat, setExportFormat] = useState('csv');
 
   // Fetch reports summary
   const { data: reportsData, isLoading: reportsLoading } = useQuery(
@@ -94,6 +102,109 @@ const Reports = () => {
 
   const formatNumber = (num) => {
     return new Intl.NumberFormat('en-US').format(num);
+  };
+
+  const handleExport = (format) => {
+    let dataToExport = [];
+    let filename = '';
+
+    switch (reportType) {
+      case 'orders':
+        if (detailedData?.orders) {
+          dataToExport = detailedData.orders.map(order => ({
+            'Order ID': order.id,
+            'Customer': order.customer?.full_name || 'N/A',
+            'Product': order.product?.name || 'N/A',
+            'Total Amount': order.total_amount,
+            'Status': order.status,
+            'Order Date': order.order_date ? new Date(order.order_date).toLocaleDateString() : 'N/A'
+          }));
+          filename = 'orders_report';
+        }
+        break;
+      case 'payments':
+        if (detailedData?.payments) {
+          dataToExport = detailedData.payments.map(payment => ({
+            'Payment ID': payment.id,
+            'Order ID': payment.order?.id || 'N/A',
+            'Customer': payment.order?.customer?.full_name || 'N/A',
+            'Amount': payment.amount,
+            'Method': payment.payment_method,
+            'Date': payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'
+          }));
+          filename = 'payments_report';
+        }
+        break;
+      case 'installments':
+        if (detailedData?.installments) {
+          dataToExport = detailedData.installments.map(installment => ({
+            'Installment': installment.installment_number,
+            'Order ID': installment.order?.id || 'N/A',
+            'Customer': installment.order?.customer?.full_name || 'N/A',
+            'Amount': installment.amount,
+            'Due Date': installment.due_date ? new Date(installment.due_date).toLocaleDateString() : 'N/A',
+            'Status': installment.status
+          }));
+          filename = 'installments_report';
+        }
+        break;
+      default:
+        // Summary export
+        if (reportsData) {
+          dataToExport = [{
+            'Total Orders': reportsData.summary?.orders?.total || 0,
+            'Active Orders': reportsData.summary?.orders?.active || 0,
+            'Total Revenue': reportsData.summary?.revenue?.total || 0,
+            'Outstanding Balance': reportsData.summary?.revenue?.outstanding || 0,
+            'Total Customers': reportsData.summary?.customers?.total || 0,
+            'Active Customers': reportsData.summary?.customers?.active || 0
+          }];
+          filename = 'summary_report';
+        }
+    }
+
+    if (dataToExport.length === 0) {
+      toast.error('No data available to export');
+      return;
+    }
+
+    if (format === 'csv') {
+      const csvContent = [
+        Object.keys(dataToExport[0]).join(','),
+        ...dataToExport.map(row => Object.values(row).map(value => `"${value}"`).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } else if (format === 'json') {
+      const jsonContent = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+    
+    toast.success(`Report exported as ${format.toUpperCase()} successfully!`);
+  };
+
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setSelectedCustomer('');
+    setSelectedProduct('');
+    setSelectedStatus('');
+    setSelectedPeriod('30');
+    const dates = getPeriodDates('30');
+    setStartDate(dates.start);
+    setEndDate(dates.end);
   };
 
   // Generate beautiful chart data for monthly trends
@@ -362,137 +473,130 @@ const Reports = () => {
   ];
 
   return (
-    <div className="fade-in">
-      {/* Header with Gradient Background */}
-      <div className="gradient-bg text-white p-4 rounded-3 mb-4" style={{ borderRadius: '20px' }}>
-        <div className="d-flex justify-content-between align-items-center">
-          <div>
-            <h1 className="mb-2" style={{ fontSize: '2.5rem', fontWeight: '700' }}>
-              📊 Reports & Analytics
-            </h1>
-            <p className="mb-0" style={{ opacity: '0.9', fontSize: '1.1rem' }}>
-              Comprehensive business insights and performance metrics
-            </p>
-          </div>
-          <div className="d-flex gap-2">
-            <select
-              className="form-control"
-              value={selectedPeriod}
-              onChange={(e) => handlePeriodChange(e.target.value)}
-              style={{ width: 'auto', borderRadius: '12px', border: 'none' }}
-            >
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="90">Last 90 Days</option>
-              <option value="365">Last Year</option>
-            </select>
-            <button className="btn-modern btn-modern-outline">
-              📈 Export Report
-            </button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+          <p className="text-muted-foreground">
+            Comprehensive business insights and performance metrics
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Select
+            value={selectedPeriod}
+            onChange={(e) => handlePeriodChange(e.target.value)}
+          >
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+            <option value="365">Last Year</option>
+          </Select>
+          <Select
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value)}
+          >
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+          </Select>
+          <Button 
+            variant="outline"
+            onClick={() => handleExport(exportFormat)}
+          >
+            Export Report
+          </Button>
         </div>
       </div>
 
-      {/* Modern Tab Navigation */}
-      <div className="tab-container">
-        <button
-          className={`tab-button ${reportType === 'summary' ? 'active' : ''}`}
-          onClick={() => setReportType('summary')}
-        >
-          📊 Summary
-        </button>
-        <button
-          className={`tab-button ${reportType === 'orders' ? 'active' : ''}`}
-          onClick={() => setReportType('orders')}
-        >
-          📋 Orders
-        </button>
-        <button
-          className={`tab-button ${reportType === 'payments' ? 'active' : ''}`}
-          onClick={() => setReportType('payments')}
-        >
-          💰 Payments
-        </button>
-        <button
-          className={`tab-button ${reportType === 'installments' ? 'active' : ''}`}
-          onClick={() => setReportType('installments')}
-        >
-          📅 Installments
-        </button>
-      </div>
+      {/* Tab Navigation */}
+      <Tabs value={reportType} onValueChange={setReportType}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="installments">Installments</TabsTrigger>
+        </TabsList>
 
-      {/* Enhanced Filter Panel */}
-      {reportType !== 'summary' && (
-        <div className="filter-panel slide-up">
-          <h6>Advanced Filters</h6>
-          <div className="row">
-            <div className="col-md-3">
-              <label className="form-label">Start Date</label>
-              <input
-                type="date"
-                className="form-control"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label">End Date</label>
-              <input
-                type="date"
-                className="form-control"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">Customer</label>
-              <select
-                className="form-control"
-                value={selectedCustomer}
-                onChange={(e) => setSelectedCustomer(e.target.value)}
-              >
-                <option value="">All Customers</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">Product</label>
-              <select
-                className="form-control"
-                value={selectedProduct}
-                onChange={(e) => setSelectedProduct(e.target.value)}
-              >
-                <option value="">All Products</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">Status</label>
-              <select
-                className="form-control"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
+        {/* Filter Panel */}
+        {reportType !== 'summary' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Date</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Customer</label>
+                  <Select
+                    value={selectedCustomer}
+                    onChange={(e) => setSelectedCustomer(e.target.value)}
+                  >
+                    <option value="">All Customers</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.full_name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Product</label>
+                  <Select
+                    value={selectedProduct}
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                  >
+                    <option value="">All Products</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-center mt-4">
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {reportType === 'summary' && (
+        <TabsContent value="summary">
+          {reportType === 'summary' && (
         <>
           {/* Beautiful Metric Cards */}
           <div className="row mb-4">
