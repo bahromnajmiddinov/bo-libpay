@@ -10,6 +10,35 @@ import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Table as TableIcon, Grid, Calendar, DollarSign, User, Package, CreditCard, FileText } from 'lucide-react';
+
+// View toggle component
+const ViewToggle = ({ view, onChange }) => (
+  <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
+    <button
+      onClick={() => onChange('table')}
+      className={`p-2 rounded-md transition-colors ${
+        view === 'table' 
+          ? 'bg-white shadow-sm border' 
+          : 'hover:bg-gray-100'
+      }`}
+      title="Table View"
+    >
+      <TableIcon size={18} />
+    </button>
+    <button
+      onClick={() => onChange('card')}
+      className={`p-2 rounded-md transition-colors ${
+        view === 'card' 
+          ? 'bg-white shadow-sm border' 
+          : 'hover:bg-gray-100'
+      }`}
+      title="Card View"
+    >
+      <Grid size={18} />
+    </button>
+  </div>
+);
 
 const Orders = () => {
   const [showModal, setShowModal] = useState(false);
@@ -27,6 +56,8 @@ const Orders = () => {
   const [productFilter, setProductFilter] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [amountRange, setAmountRange] = useState({ min: '', max: '' });
+  const [viewMode, setViewMode] = useState('table');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch orders
@@ -155,6 +186,7 @@ const Orders = () => {
     onSuccess: () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
+      queryClient.invalidateQueries('dueInstallments');
       toast.success('Order created successfully!');
       setShowModal(false);
       resetForm();
@@ -170,6 +202,7 @@ const Orders = () => {
       onSuccess: () => {
         queryClient.invalidateQueries('orders');
         queryClient.invalidateQueries('dashboardStats');
+        queryClient.invalidateQueries('dueInstallments');
         toast.success('Order updated successfully!');
         setShowModal(false);
         setEditingOrder(null);
@@ -185,6 +218,7 @@ const Orders = () => {
     onSuccess: () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
+      queryClient.invalidateQueries('dueInstallments');
       toast.success('Order approved successfully!');
     },
     onError: (error) => {
@@ -196,6 +230,7 @@ const Orders = () => {
     onSuccess: () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
+      queryClient.invalidateQueries('dueInstallments');
       toast.success('Order deleted successfully!');
     },
     onError: (error) => {
@@ -207,6 +242,7 @@ const Orders = () => {
     onSuccess: () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
+      queryClient.invalidateQueries('dueInstallments');
       toast.success('Payment recorded successfully!');
       setShowPaymentModal(false);
       resetPaymentForm();
@@ -429,134 +465,194 @@ const Orders = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'completed': return 'bg-success';
-      case 'active': return 'bg-primary';
-      case 'approved': return 'bg-info';
-      case 'pending': return 'bg-warning';
-      default: return 'bg-secondary';
-    }
-  };
+  // Card View Component
+  const OrderCardView = ({ orders }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {orders.map((order) => (
+        <Card key={order.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-lg">Order #{order.id}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(order.order_date)}
+                  </p>
+                </div>
+                <Badge variant={
+                  order.status === 'completed' ? "default" :
+                  order.status === 'active' ? "secondary" :
+                  order.status === 'approved' ? "outline" :
+                  "destructive"
+                }>
+                  {order.status}
+                </Badge>
+              </div>
+
+              {/* Customer & Product */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <User size={16} className="text-muted-foreground" />
+                  <span className="font-medium">{order.customer?.full_name}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Package size={16} className="text-muted-foreground" />
+                  <span className="text-sm">
+                    {order.product?.name} × {order.quantity}
+                  </span>
+                </div>
+              </div>
+
+              {/* Financial Info */}
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Total:</span>
+                  <div className="font-semibold text-green-600">
+                    {formatCurrency(order.total_amount)}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Down Payment:</span>
+                  <div className="font-medium">
+                    {formatCurrency(order.down_payment)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Installments */}
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center space-x-1">
+                  <Calendar size={14} className="text-muted-foreground" />
+                  <span>{order.installment_count} months</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <DollarSign size={14} className="text-muted-foreground" />
+                  <span className="font-medium">
+                    {formatCurrency(order.monthly_payment || 0)}/mo
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-1 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewDetails(order)}
+                >
+                  Details
+                </Button>
+                {order.status === 'pending' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleApprove(order)}
+                  >
+                    Approve
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRecordPayment(order)}
+                >
+                  Payment
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(order)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(order)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 
   if (isLoading) {
-    return <div className="loading">Loading orders...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg">Loading orders...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="fade-in">
-      {/* Enhanced Header */}
-      <div className="gradient-bg text-white p-4 rounded-3 mb-4" style={{ borderRadius: '20px' }}>
-        <div className="d-flex justify-content-between align-items-center">
-    <div>
-            <h1 className="mb-2" style={{ fontSize: '2.5rem', fontWeight: '700' }}>
-              📋 Orders Management
-            </h1>
-            <p className="mb-0" style={{ opacity: '0.9', fontSize: '1.1rem' }}>
-              Manage orders, payments, and installment tracking with advanced analytics
-            </p>
-          </div>
-          <div className="d-flex gap-2">
-        <button
-              className="btn-modern btn-modern-primary"
-          onClick={() => {
-            setEditingOrder(null);
-            resetForm();
-            setShowModal(true);
-          }}
-        >
-              ➕ Create Order
-        </button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Orders Management</h1>
+          <p className="text-muted-foreground">
+            Manage orders, payments, and installment tracking with advanced analytics
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <ViewToggle view={viewMode} onChange={setViewMode} />
+          <Button
+            onClick={() => {
+              setEditingOrder(null);
+              resetForm();
+              setShowModal(true);
+            }}
+          >
+            Create Order
+          </Button>
         </div>
       </div>
 
-      {/* Enhanced Search and Filters */}
-      <div className="card-modern slide-up mb-4">
-        <div className="card-body">
-          <div className="row mb-3">
-            <div className="col-md-3">
-              <label className="form-label">🔍 Search Orders</label>
-              <input
-                type="search"
-                className="form-control"
+      {/* Mobile Filter Toggle */}
+      <div className="lg:hidden">
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+        >
+          <span>Filters & Search</span>
+          <span>{showMobileFilters ? '▲' : '▼'}</span>
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card className={`${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
+        <CardHeader>
+          <CardTitle>Filters & Search</CardTitle>
+          <CardDescription>
+            Filter and search your orders
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Search</label>
+              <Input
                 placeholder="Search by customer, product or order ID..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
             </div>
-            <div className="col-md-2">
-              <label className="form-label">📊 Sort By</label>
-              <select
-                className="form-control"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="order_date">Order Date</option>
-                <option value="total_amount">Amount</option>
-                <option value="customer">Customer</option>
-                <option value="product">Product</option>
-                <option value="status">Status</option>
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">🔄 Order</label>
-              <select
-                className="form-control"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-              >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">📈 Export</label>
-              <div className="d-flex gap-1">
-                <button
-                  className="btn btn-sm btn-success"
-                  onClick={() => handleExport('csv')}
-                  title="Export as CSV"
-                >
-                  CSV
-                </button>
-                <button
-                  className="btn btn-sm btn-info"
-                  onClick={() => handleExport('json')}
-                  title="Export as JSON"
-                >
-                  JSON
-                </button>
-              </div>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">🧹 Actions</label>
-              <button
-                className="btn btn-sm btn-outline-secondary w-100"
-                onClick={clearFilters}
-                title="Clear all filters"
-              >
-                Clear Filters
-              </button>
-            </div>
-            <div className="col-md-1">
-              <label className="form-label">📊 Results</label>
-              <div className="d-flex align-items-center h-100">
-                <span className="badge-modern badge-info-modern">
-                  {filteredAndSortedOrders.length}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="row">
-            <div className="col-md-2">
-              <label className="form-label">📋 Status</label>
-              <select
-                className="form-control"
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               >
@@ -565,12 +661,11 @@ const Orders = () => {
                 <option value="approved">Approved</option>
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
-              </select>
+              </Select>
             </div>
-            <div className="col-md-2">
-              <label className="form-label">👤 Customer</label>
-              <select
-                className="form-control"
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Customer</label>
+              <Select
                 value={customerFilter}
                 onChange={(e) => { setCustomerFilter(e.target.value); setPage(1); }}
               >
@@ -580,12 +675,11 @@ const Orders = () => {
                     {customer.full_name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
-            <div className="col-md-2">
-              <label className="form-label">📦 Product</label>
-              <select
-                className="form-control"
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product</label>
+              <Select
                 value={productFilter}
                 onChange={(e) => { setProductFilter(e.target.value); setPage(1); }}
               >
@@ -595,278 +689,400 @@ const Orders = () => {
                     {product.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
-            <div className="col-md-2">
-              <label className="form-label">📅 Start Date</label>
-              <input
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Start Date</label>
+              <Input
                 type="date"
-                className="form-control"
                 value={dateRange.start}
                 onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
               />
             </div>
-            <div className="col-md-2">
-              <label className="form-label">📅 End Date</label>
-              <input
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Date</label>
+              <Input
                 type="date"
-                className="form-control"
                 value={dateRange.end}
                 onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
               />
             </div>
-            <div className="col-md-2">
-              <label className="form-label">💰 Amount Range</label>
-              <div className="d-flex gap-1">
-                <input
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Sort By</label>
+              <Select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="order_date">Order Date</option>
+                <option value="total_amount">Amount</option>
+                <option value="customer">Customer</option>
+                <option value="product">Product</option>
+                <option value="status">Status</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Order</label>
+              <Select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Actions</label>
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
+                  Export CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
+                  Export JSON
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Amount Range</label>
+              <div className="flex space-x-2">
+                <Input
                   type="number"
-                  className="form-control"
-                  placeholder="Min"
+                  placeholder="Min amount"
                   value={amountRange.min}
                   onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
                 />
-                <input
+                <Input
                   type="number"
-                  className="form-control"
-                  placeholder="Max"
+                  placeholder="Max amount"
                   value={amountRange.max}
                   onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
                 />
               </div>
             </div>
           </div>
-        </div>
-      </div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <Badge variant="secondary">
+              {filteredAndSortedOrders.length} orders found
+            </Badge>
+            <div className="text-sm text-muted-foreground lg:hidden">
+              <Button variant="ghost" size="sm" onClick={() => setShowMobileFilters(false)}>
+                Close Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Enhanced Stats Cards */}
+      {/* Stats Cards */}
       {stats && (
-        <div className="row mb-4">
-          <div className="col-md-3">
-            <div className="metric-card info slide-up">
-              <div className="metric-value">{stats.orders?.total || 0}</div>
-              <div className="metric-label">Total Orders</div>
-              <div className="metric-subtext">
-                {stats.orders?.active || 0} Active Orders
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Package className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                  <p className="text-2xl font-bold">{stats.orders?.total || 0}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.orders?.active || 0} Active Orders
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="metric-card warning slide-up">
-              <div className="metric-value">{stats.orders?.pending || 0}</div>
-              <div className="metric-label">Pending Orders</div>
-              <div className="metric-subtext">
-                Requires approval
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Calendar className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending Orders</p>
+                  <p className="text-2xl font-bold">{stats.orders?.pending || 0}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Requires approval
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="metric-card success slide-up">
-              <div className="metric-value">{stats.orders?.active || 0}</div>
-              <div className="metric-label">Active Orders</div>
-              <div className="metric-subtext">
-                In progress
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <User className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Orders</p>
+                  <p className="text-2xl font-bold">{stats.orders?.active || 0}</p>
+                  <p className="text-xs text-muted-foreground">
+                    In progress
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="metric-card danger slide-up">
-              <div className="metric-value">{formatCurrency(stats.payments?.total_revenue || 0)}</div>
-              <div className="metric-label">Total Revenue</div>
-              <div className="metric-subtext">
-                All time earnings
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.payments?.total_revenue || 0)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    All time earnings
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Due Payments Alert */}
       {dueData && (dueData.due_today?.length > 0 || dueData.overdue?.length > 0) && (
-        <div className="alert alert-warning mb-4">
-          <h6>Payment Alerts</h6>
-          {dueData.due_today?.length > 0 && (
-            <p className="mb-1">
-              <strong>{dueData.due_today.length}</strong> payments due today
-            </p>
-          )}
-          {dueData.overdue?.length > 0 && (
-            <p className="mb-0">
-              <strong>{dueData.overdue.length}</strong> overdue payments
-            </p>
-          )}
-        </div>
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <span className="text-yellow-600">⚠️</span>
+              </div>
+              <div>
+                <h4 className="font-semibold">Payment Alerts</h4>
+                <div className="text-sm">
+                  {dueData.due_today?.length > 0 && (
+                    <p>
+                      <strong>{dueData.due_today.length}</strong> payments due today
+                    </p>
+                  )}
+                  {dueData.overdue?.length > 0 && (
+                    <p>
+                      <strong>{dueData.overdue.length}</strong> overdue payments
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Enhanced Orders Table */}
-      <div className="card-modern slide-up">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h6 className="chart-title">📋 Orders List</h6>
-            <div className="d-flex align-items-center gap-2">
-              <span className="badge-modern badge-info-modern">
-                Showing {Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedOrders.length, page * pageSize)} of {filteredAndSortedOrders.length}
+      {/* Orders List */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle>
+                {viewMode === 'table' ? 'Orders List' : 'Orders Grid'}
+              </CardTitle>
+              <CardDescription>
+                {viewMode === 'table' 
+                  ? 'Manage your orders in table view' 
+                  : 'Manage your orders in card view'
+                }
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:block">
+                View:
               </span>
+              <ViewToggle view={viewMode} onChange={setViewMode} />
             </div>
           </div>
-          <div className="table-responsive">
-            <table className="table table-modern">
-              <thead>
-                <tr>
-                  <th>📋 Order ID</th>
-                  <th>👤 Customer</th>
-                  <th>📦 Product</th>
-                  <th>💰 Total Amount</th>
-                  <th>💳 Down Payment</th>
-                  <th>📅 Installments</th>
-                  <th>📊 Status</th>
-                  <th>📅 Order Date</th>
-                  <th>⚙️ Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(paginatedOrders) && paginatedOrders.length > 0 ? (
-                  paginatedOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td>
-                        <span className="badge-modern badge-info-modern">
-                          #{order.id}
-                        </span>
-                      </td>
-                      <td>{order.customer?.full_name}</td>
-                      <td>
-                        <div>
-                          <strong>{order.product?.name}</strong>
-                          <br />
-                          <small className="text-muted">Qty: {order.quantity}</small>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="fw-bold text-success">
-                          {formatCurrency(order.total_amount)}
-                        </span>
-                      </td>
-                      <td>{formatCurrency(order.down_payment)}</td>
-                      <td>
-                        <span className="badge-modern badge-warning-modern">
-                          {order.installment_count} months
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge-modern ${
-                          order.status === 'completed' ? 'badge-success-modern' :
-                          order.status === 'active' ? 'badge-info-modern' :
-                          order.status === 'approved' ? 'badge-warning-modern' :
-                          'badge-danger-modern'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td>{formatDate(order.order_date)}</td>
-                      <td>
-                        <div className="d-flex gap-1">
-                          <button
-                            className="btn btn-sm btn-outline-info"
-                            onClick={() => handleViewDetails(order)}
-                            title="View Details"
-                          >
-                            📋 Details
-                          </button>
-                          {order.status === 'pending' && (
-                            <button
-                              className="btn btn-sm btn-outline-success"
-                              onClick={() => handleApprove(order)}
-                              title="Approve Order"
-                            >
-                              ✅ Approve
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => handleRecordPayment(order)}
-                            title="Record Payment"
-                          >
-                            💰 Payment
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => handleEdit(order)}
-                            title="Edit Order"
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => handleDelete(order)}
-                            title="Delete Order"
-                          >
-                            🗑️ Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" className="text-center py-4">
-                      <div className="empty-state">
-                        <div className="empty-state-icon">📋</div>
-                        <div className="empty-state-title">No Orders Found</div>
-                        <div className="empty-state-text">
-                          No orders match your current filters. Try adjusting your search criteria.
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="card-footer d-flex justify-content-between align-items-center">
-          <div>
-            <small className="text-muted">Showing {Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedOrders.length, page * pageSize)} of {filteredAndSortedOrders.length} orders</small>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <div className="btn-group">
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => handlePageChange(page - 1)} disabled={page <= 1}>Prev</button>
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => handlePageChange(page + 1)} disabled={page >= totalPages}>Next</button>
+        </CardHeader>
+        <CardContent>
+          {Array.isArray(paginatedOrders) && paginatedOrders.length > 0 ? (
+            <div className="space-y-4">
+              {viewMode === 'table' ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order ID</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Total Amount</TableHead>
+                        <TableHead>Down Payment</TableHead>
+                        <TableHead>Installments</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Order Date</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              #{order.id}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{order.customer?.full_name}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{order.product?.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                Qty: {order.quantity}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(order.total_amount)}
+                            </span>
+                          </TableCell>
+                          <TableCell>{formatCurrency(order.down_payment)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {order.installment_count} months
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              order.status === 'completed' ? "default" :
+                              order.status === 'active' ? "secondary" :
+                              order.status === 'approved' ? "outline" :
+                              "destructive"
+                            }>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(order.order_date)}</TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDetails(order)}
+                              >
+                                Details
+                              </Button>
+                              {order.status === 'pending' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleApprove(order)}
+                                >
+                                  Approve
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRecordPayment(order)}
+                              >
+                                Payment
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <OrderCardView orders={paginatedOrders} />
+              )}
             </div>
-
-            <select className="form-select form-select-sm" value={pageSize} onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}>
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">📋</div>
+              <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
+              <p className="text-muted-foreground">
+                No orders match your current filters. Try adjusting your search criteria.
+              </p>
+            </div>
+          )}
+        </CardContent>
+        
+        {/* Pagination */}
+        {Array.isArray(paginatedOrders) && paginatedOrders.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between p-6 pt-0 gap-4">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-muted-foreground">
+                Showing {Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedOrders.length, page * pageSize)} of {filteredAndSortedOrders.length} orders
+              </span>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium">Show:</label>
+                <Select
+                  value={pageSize.toString()}
+                  onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </Select>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" disabled>
+                Page {page} of {totalPages}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
+      </Card>
 
       {/* Order Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">
                 {editingOrder ? 'Edit Order' : 'Create New Order'}
               </h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowModal(false)}
               >
                 ×
               </button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Customer</label>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Customer</label>
                       <select
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="customer"
                         value={formData.customer}
                         onChange={handleInputChange}
@@ -880,12 +1096,10 @@ const Orders = () => {
                         ))}
                       </select>
                     </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Product</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Product</label>
                       <select
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="product"
                         value={formData.product}
                         onChange={handleProductChange}
@@ -900,15 +1114,13 @@ const Orders = () => {
                       </select>
                     </div>
                   </div>
-                </div>
 
-                <div className="row">
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Quantity</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Quantity</label>
                       <input
                         type="number"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="quantity"
                         value={formData.quantity}
                         onChange={handleQuantityChange}
@@ -916,28 +1128,24 @@ const Orders = () => {
                         required
                       />
                     </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Total Amount ($)</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Total Amount ($)</label>
                       <input
                         type="number"
                         step="0.01"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="total_amount"
                         value={formData.total_amount}
                         onChange={handleInputChange}
                         required
                       />
                     </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Down Payment ($)</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Down Payment ($)</label>
                       <input
                         type="number"
                         step="0.01"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="down_payment"
                         value={formData.down_payment}
                         onChange={handleInputChange}
@@ -945,15 +1153,13 @@ const Orders = () => {
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Installment Count (months)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Installment Count (months)</label>
                       <input
                         type="number"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="installment_count"
                         value={formData.installment_count}
                         onChange={handleInputChange}
@@ -962,13 +1168,11 @@ const Orders = () => {
                         required
                       />
                     </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Monthly Payment</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Monthly Payment</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
                         value={formData.total_amount && formData.down_payment && formData.installment_count 
                           ? formatCurrency((formData.total_amount - formData.down_payment) / formData.installment_count)
                           : '$0.00'
@@ -977,38 +1181,43 @@ const Orders = () => {
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">Notes</label>
-                  <textarea
-                    className="form-control"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    rows="3"
-                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Notes</label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleInputChange}
+                      rows="3"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+              <div className="flex items-center justify-end p-6 border-t space-x-3">
+                <Button
+                  variant="outline"
                   onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
                   disabled={createOrderMutation.isLoading || updateOrderMutation.isLoading}
                 >
-                  {createOrderMutation.isLoading || updateOrderMutation.isLoading
-                    ? 'Saving...'
-                    : editingOrder
-                    ? 'Update Order'
-                    : 'Create Order'}
-                </button>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createOrderMutation.isLoading || updateOrderMutation.isLoading}
+                >
+                  {createOrderMutation.isLoading || updateOrderMutation.isLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {editingOrder ? 'Updating...' : 'Creating...'}
+                    </span>
+                  ) : (
+                    editingOrder ? 'Update Order' : 'Create Order'
+                  )}
+                </Button>
               </div>
             </form>
           </div>
@@ -1017,110 +1226,143 @@ const Orders = () => {
 
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
-        <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
-          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">Order Details - #{selectedOrder.id}</h5>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowDetailsModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">Order Details - #{selectedOrder.id}</h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowDetailsModal(false)}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
-              <div className="row">
-                <div className="col-md-6">
-                  <h6>Customer Information</h6>
-                  <p><strong>Name:</strong> {selectedOrder.customer?.full_name}</p>
-                  <p><strong>Email:</strong> {selectedOrder.customer?.email}</p>
-                  <p><strong>Phone:</strong> {selectedOrder.customer?.phone_number}</p>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h6 className="font-semibold mb-3 flex items-center">
+                    <User className="w-4 h-4 mr-2" />
+                    Customer Information
+                  </h6>
+                  <div className="space-y-2">
+                    <p><strong>Name:</strong> {selectedOrder.customer?.full_name}</p>
+                    <p><strong>Email:</strong> {selectedOrder.customer?.email || 'N/A'}</p>
+                    <p><strong>Phone:</strong> {selectedOrder.customer?.phone_number || 'N/A'}</p>
+                  </div>
                 </div>
-                <div className="col-md-6">
-                  <h6>Order Information</h6>
-                  <p><strong>Product:</strong> {selectedOrder.product?.name}</p>
-                  <p><strong>Quantity:</strong> {selectedOrder.quantity}</p>
-                  <p><strong>Status:</strong> 
-                    <span className={`badge ${getStatusBadgeClass(selectedOrder.status)} ms-2`}>
-                      {selectedOrder.status}
-                    </span>
-                  </p>
+                <div>
+                  <h6 className="font-semibold mb-3 flex items-center">
+                    <Package className="w-4 h-4 mr-2" />
+                    Order Information
+                  </h6>
+                  <div className="space-y-2">
+                    <p><strong>Product:</strong> {selectedOrder.product?.name}</p>
+                    <p><strong>Quantity:</strong> {selectedOrder.quantity}</p>
+                    <p><strong>Status:</strong> 
+                      <Badge variant={
+                        selectedOrder.status === 'completed' ? "default" :
+                        selectedOrder.status === 'active' ? "secondary" :
+                        selectedOrder.status === 'approved' ? "outline" :
+                        "destructive"
+                      } className="ml-2">
+                        {selectedOrder.status}
+                      </Badge>
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="row mt-3">
-                <div className="col-md-6">
-                  <h6>Payment Information</h6>
-                  <p><strong>Total Amount:</strong> {formatCurrency(selectedOrder.total_amount)}</p>
-                  <p><strong>Down Payment:</strong> {formatCurrency(selectedOrder.down_payment)}</p>
-                  <p><strong>Monthly Payment:</strong> {formatCurrency(selectedOrder.monthly_payment)}</p>
-                  <p><strong>Remaining Balance:</strong> {formatCurrency(selectedOrder.remaining_balance)}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div>
+                  <h6 className="font-semibold mb-3 flex items-center">
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Payment Information
+                  </h6>
+                  <div className="space-y-2">
+                    <p><strong>Total Amount:</strong> {formatCurrency(selectedOrder.total_amount)}</p>
+                    <p><strong>Down Payment:</strong> {formatCurrency(selectedOrder.down_payment)}</p>
+                    <p><strong>Monthly Payment:</strong> {formatCurrency(selectedOrder.monthly_payment || 0)}</p>
+                    <p><strong>Remaining Balance:</strong> {formatCurrency(selectedOrder.remaining_balance || 0)}</p>
+                  </div>
                 </div>
-                <div className="col-md-6">
-                  <h6>Installment Plan</h6>
-                  <p><strong>Installment Count:</strong> {selectedOrder.installment_count} months</p>
-                  <p><strong>Order Date:</strong> {formatDate(selectedOrder.order_date)}</p>
-                  {selectedOrder.approved_date && (
-                    <p><strong>Approved Date:</strong> {formatDate(selectedOrder.approved_date)}</p>
-                  )}
-                  {selectedOrder.start_date && (
-                    <p><strong>Start Date:</strong> {formatDate(selectedOrder.start_date)}</p>
-                  )}
+                <div>
+                  <h6 className="font-semibold mb-3 flex items-center">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Installment Plan
+                  </h6>
+                  <div className="space-y-2">
+                    <p><strong>Installment Count:</strong> {selectedOrder.installment_count} months</p>
+                    <p><strong>Order Date:</strong> {formatDate(selectedOrder.order_date)}</p>
+                    {selectedOrder.approved_date && (
+                      <p><strong>Approved Date:</strong> {formatDate(selectedOrder.approved_date)}</p>
+                    )}
+                    {selectedOrder.start_date && (
+                      <p><strong>Start Date:</strong> {formatDate(selectedOrder.start_date)}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {selectedOrder.notes && (
-                <div className="mt-3">
-                  <h6>Notes</h6>
-                  <p>{selectedOrder.notes}</p>
+                <div className="mt-6">
+                  <h6 className="font-semibold mb-3 flex items-center">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Notes
+                  </h6>
+                  <p className="text-muted-foreground">{selectedOrder.notes}</p>
                 </div>
               )}
 
               {selectedOrder.installments && selectedOrder.installments.length > 0 && (
-                <div className="mt-4">
-                  <h6>Installment Schedule</h6>
-                  <div className="table-responsive">
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Amount</th>
-                          <th>Due Date</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                <div className="mt-6">
+                  <h6 className="font-semibold mb-3">Installment Schedule</h6>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>#</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {selectedOrder.installments.map((installment) => (
-                          <tr key={installment.id}>
-                            <td>{installment.installment_number}</td>
-                            <td>{formatCurrency(installment.amount)}</td>
-                            <td>{formatDate(installment.due_date)}</td>
-                            <td>
-                              <span className={`badge ${
-                                installment.status === 'paid' ? 'bg-success' :
-                                installment.status === 'overdue' ? 'bg-danger' :
-                                'bg-warning'
-                              }`}>
+                          <TableRow key={installment.id}>
+                            <TableCell>{installment.installment_number}</TableCell>
+                            <TableCell>{formatCurrency(installment.amount)}</TableCell>
+                            <TableCell>{formatDate(installment.due_date)}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                installment.status === 'paid' ? "default" :
+                                installment.status === 'overdue' ? "destructive" :
+                                "outline"
+                              }>
                                 {installment.status}
-                              </span>
-                            </td>
-                          </tr>
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
             </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
+            <div className="flex items-center justify-end p-6 border-t">
+              <Button
+                variant="outline"
                 onClick={() => setShowDetailsModal(false)}
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1128,87 +1370,104 @@ const Orders = () => {
 
       {/* Payment Modal */}
       {showPaymentModal && selectedOrder && (
-        <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">Record Payment - Order #{selectedOrder.id}</h5>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowPaymentModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">Record Payment - Order #{selectedOrder.id}</h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowPaymentModal(false)}
               >
                 ×
               </button>
             </div>
             <form onSubmit={handlePaymentSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Payment Amount ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-control"
-                    name="amount"
-                    value={paymentForm.amount}
-                    onChange={handlePaymentChange}
-                    required
-                  />
-                </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Payment Amount ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="amount"
+                      value={paymentForm.amount}
+                      onChange={handlePaymentChange}
+                      required
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Payment Method</label>
-                  <select
-                    className="form-control"
-                    name="payment_method"
-                    value={paymentForm.payment_method}
-                    onChange={handlePaymentChange}
-                    required
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="check">Check</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Payment Method</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="payment_method"
+                      value={paymentForm.payment_method}
+                      onChange={handlePaymentChange}
+                      required
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="card">Credit/Debit Card</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="check">Check</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Reference Number</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="reference_number"
-                    value={paymentForm.reference_number}
-                    onChange={handlePaymentChange}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Reference Number</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="reference_number"
+                      value={paymentForm.reference_number}
+                      onChange={handlePaymentChange}
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Notes</label>
-                  <textarea
-                    className="form-control"
-                    name="notes"
-                    value={paymentForm.notes}
-                    onChange={handlePaymentChange}
-                    rows="3"
-                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Notes</label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="notes"
+                      value={paymentForm.notes}
+                      onChange={handlePaymentChange}
+                      rows="3"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+              <div className="flex items-center justify-end p-6 border-t space-x-3">
+                <Button
+                  variant="outline"
                   onClick={() => setShowPaymentModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
                   disabled={createPaymentMutation.isLoading}
                 >
-                  {createPaymentMutation.isLoading ? 'Recording...' : 'Record Payment'}
-                </button>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createPaymentMutation.isLoading}
+                >
+                  {createPaymentMutation.isLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Recording...
+                    </span>
+                  ) : (
+                    'Record Payment'
+                  )}
+                </Button>
               </div>
             </form>
           </div>

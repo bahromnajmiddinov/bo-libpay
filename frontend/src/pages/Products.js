@@ -8,7 +8,35 @@ import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Table as TableIcon, Grid } from 'lucide-react';
+
+// View toggle component with Lucide icons
+const ViewToggle = ({ view, onChange }) => (
+  <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
+    <button
+      onClick={() => onChange('table')}
+      className={`p-2 rounded-md transition-colors ${
+        view === 'table' 
+          ? 'bg-white shadow-sm border' 
+          : 'hover:bg-gray-100'
+      }`}
+      title="Table View"
+    >
+      <TableIcon size={18} />
+    </button>
+    <button
+      onClick={() => onChange('card')}
+      className={`p-2 rounded-md transition-colors ${
+        view === 'card' 
+          ? 'bg-white shadow-sm border' 
+          : 'hover:bg-gray-100'
+      }`}
+      title="Card View"
+    >
+      <Grid size={18} />
+    </button>
+  </div>
+);
 
 const Products = () => {
   const [showModal, setShowModal] = useState(false);
@@ -23,6 +51,8 @@ const Products = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [stockFilter, setStockFilter] = useState('');
+  const [viewMode, setViewMode] = useState('table');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch products
@@ -34,23 +64,15 @@ const Products = () => {
     }
   );
 
-  // Extract products array from paginated response
   const products = productsData?.results || productsData || [];
-
-  // Fetch categories
-  const { data: categoriesData } = useQuery(
-    'categories',
-    productService.getCategories
-  );
-
-  // Extract categories array from paginated response
+  const { data: categoriesData } = useQuery('categories', productService.getCategories);
   const categories = categoriesData?.results || categoriesData || [];
+  const { data: stats } = useQuery('productStats', productService.getProductStats);
 
   // Enhanced filtering and sorting
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = products;
 
-    // Search filter
     if (searchQuery.trim()) {
       const normalizedQuery = searchQuery.trim().toLowerCase();
       filtered = filtered.filter((p) => {
@@ -61,7 +83,6 @@ const Products = () => {
       });
     }
 
-    // Status filter
     if (statusFilter) {
       filtered = filtered.filter((p) => {
         if (statusFilter === 'active') return p.is_active;
@@ -70,7 +91,6 @@ const Products = () => {
       });
     }
 
-    // Category filter
     if (categoryFilter) {
       filtered = filtered.filter((p) => {
         const categoryId = p.category?.id || p.category_id;
@@ -78,7 +98,6 @@ const Products = () => {
       });
     }
 
-    // Price range filter
     if (priceRange.min !== '') {
       filtered = filtered.filter((p) => p.price >= parseFloat(priceRange.min));
     }
@@ -86,7 +105,6 @@ const Products = () => {
       filtered = filtered.filter((p) => p.price <= parseFloat(priceRange.max));
     }
 
-    // Stock filter
     if (stockFilter) {
       if (stockFilter === 'in_stock') {
         filtered = filtered.filter((p) => p.stock_quantity > 0);
@@ -97,7 +115,6 @@ const Products = () => {
       }
     }
 
-    // Sorting
     filtered.sort((a, b) => {
       let aValue, bValue;
       
@@ -137,12 +154,6 @@ const Products = () => {
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedProducts.length / pageSize));
   const paginatedProducts = filteredAndSortedProducts.slice((page - 1) * pageSize, page * pageSize);
-
-  // Product stats
-  const { data: stats } = useQuery(
-    'productStats',
-    productService.getProductStats
-  );
 
   // Mutations
   const createProductMutation = useMutation(productService.createProduct, {
@@ -353,14 +364,84 @@ const Products = () => {
     }).format(amount);
   };
 
+  // Card View Component
+  const ProductCardView = ({ products }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {products.map((product) => (
+        <Card key={product.id} className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <div className="flex justify-between items-start">
+                <h3 className="font-semibold text-lg truncate">{product.name}</h3>
+                <Badge variant={product.is_active ? "default" : "destructive"}>
+                  {product.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+              
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {product.description}
+              </p>
+              
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-green-600">
+                  {formatCurrency(product.price)}
+                </span>
+                <Badge variant={
+                  product.stock_quantity > 10 ? "default" :
+                  product.stock_quantity > 0 ? "destructive" :
+                  "destructive"
+                }>
+                  Stock: {product.stock_quantity}
+                </Badge>
+              </div>
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">
+                  {product.category?.name || product.category_name || 'No Category'}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {product.min_installments}-{product.max_installments}m
+                </Badge>
+              </div>
+              
+              <div className="flex justify-between items-center pt-2 border-t">
+                <span className="text-xs text-muted-foreground">
+                  SKU: {product.sku}
+                </span>
+                <div className="flex space-x-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(product)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(product)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   if (isLoading) {
-    return <div className="loading">Loading products...</div>;
+    return <div className="flex justify-center items-center h-64">
+      <div className="text-lg">Loading products...</div>
+    </div>;
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground">
@@ -368,6 +449,7 @@ const Products = () => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <ViewToggle view={viewMode} onChange={setViewMode} />
           <Button
             variant="outline"
             onClick={() => setShowCategoryModal(true)}
@@ -386,8 +468,20 @@ const Products = () => {
         </div>
       </div>
 
+      {/* Mobile Filter Toggle */}
+      <div className="lg:hidden">
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+        >
+          <span>Filters & Search</span>
+          <span>{showMobileFilters ? '▲' : '▼'}</span>
+        </Button>
+      </div>
+
       {/* Filters */}
-      <Card>
+      <Card className={`${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
         <CardHeader>
           <CardTitle>Filters & Search</CardTitle>
           <CardDescription>
@@ -450,7 +544,7 @@ const Products = () => {
                 type="number"
                 placeholder="Min price"
                 value={priceRange.min}
-                onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                onChange={(e) => { setPriceRange(prev => ({ ...prev, min: e.target.value })); setPage(1); }}
               />
             </div>
             <div className="space-y-2">
@@ -459,7 +553,7 @@ const Products = () => {
                 type="number"
                 placeholder="Max price"
                 value={priceRange.max}
-                onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                onChange={(e) => { setPriceRange(prev => ({ ...prev, max: e.target.value })); setPage(1); }}
               />
             </div>
             <div className="space-y-2">
@@ -487,7 +581,7 @@ const Products = () => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Actions</label>
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button variant="outline" size="sm" onClick={clearFilters}>
                   Clear
                 </Button>
@@ -501,10 +595,15 @@ const Products = () => {
             </div>
           </div>
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <Badge variant="secondary">
               {filteredAndSortedProducts.length} products found
             </Badge>
+            <div className="text-sm text-muted-foreground lg:hidden">
+              <Button variant="ghost" size="sm" onClick={() => setShowMobileFilters(false)}>
+                Close Filters
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -567,93 +666,114 @@ const Products = () => {
         </div>
       )}
 
-      {/* Products Table */}
+      {/* Products List */}
       <Card>
         <CardHeader>
-          <CardTitle>Products List</CardTitle>
-          <CardDescription>
-            Manage your product catalog
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle>
+                {viewMode === 'table' ? 'Products List' : 'Products Grid'}
+              </CardTitle>
+              <CardDescription>
+                {viewMode === 'table' 
+                  ? 'Manage your product catalog in table view' 
+                  : 'Manage your product catalog in card view'
+                }
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:block">
+                View:
+              </span>
+              <ViewToggle view={viewMode} onChange={setViewMode} />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {Array.isArray(paginatedProducts) && paginatedProducts.length > 0 ? (
             <div className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Installments</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedProducts.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-muted-foreground">{product.description}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {product.sku}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {product.category?.name || product.category_name || 'No Category'}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-green-600">
-                          {formatCurrency(product.price)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          product.stock_quantity > 10 ? "default" :
-                          product.stock_quantity > 0 ? "destructive" :
-                          "destructive"
-                        }>
-                          {product.stock_quantity}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {product.min_installments} - {product.max_installments} months
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={product.is_active ? "default" : "destructive"}>
-                          {product.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(product)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(product)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {viewMode === 'table' ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Stock</TableHead>
+                        <TableHead>Installments</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedProducts.map((product) => (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{product.name}</div>
+                              <div className="text-sm text-muted-foreground line-clamp-1">{product.description}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {product.sku}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {product.category?.name || product.category_name || 'No Category'}
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(product.price)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              product.stock_quantity > 10 ? "default" :
+                              product.stock_quantity > 0 ? "destructive" :
+                              "destructive"
+                            }>
+                              {product.stock_quantity}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {product.min_installments} - {product.max_installments} months
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={product.is_active ? "default" : "destructive"}>
+                              {product.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(product)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(product)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <ProductCardView products={paginatedProducts} />
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
@@ -668,7 +788,7 @@ const Products = () => {
         
         {/* Pagination */}
         {Array.isArray(paginatedProducts) && paginatedProducts.length > 0 && (
-          <div className="flex items-center justify-between p-6 pt-0">
+          <div className="flex flex-col sm:flex-row items-center justify-between p-6 pt-0 gap-4">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-muted-foreground">
                 Showing {Math.min(filteredAndSortedProducts.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedProducts.length, page * pageSize)} of {filteredAndSortedProducts.length} products
@@ -690,7 +810,7 @@ const Products = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage(page - 1)}
+                onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
               >
                 Previous
@@ -701,7 +821,7 @@ const Products = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage(page + 1)}
+                onClick={() => handlePageChange(page + 1)}
                 disabled={page === totalPages}
               >
                 Next
@@ -713,55 +833,57 @@ const Products = () => {
 
       {/* Product Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowModal(false)}
               >
                 ×
               </button>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Product Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Product Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">SKU</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="sku"
-                        value={formData.sku}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">SKU</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="sku"
+                      value={formData.sku}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Description</label>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Description</label>
                   <textarea
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
@@ -770,155 +892,156 @@ const Products = () => {
                   />
                 </div>
 
-                <div className="row">
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Price ($)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Price ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Stock Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="stock_quantity"
-                        value={formData.stock_quantity}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Stock Quantity</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="stock_quantity"
+                      value={formData.stock_quantity}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Category</label>
-                      <select
-                        className="form-control"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">Select Category</option>
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Category</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div className="row">
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Min Installments</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="min_installments"
-                        value={formData.min_installments}
-                        onChange={handleInputChange}
-                        min="1"
-                        required
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Min Installments</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="min_installments"
+                      value={formData.min_installments}
+                      onChange={handleInputChange}
+                      min="1"
+                      max="12"
+                      required
+                    />
                   </div>
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">Max Installments</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="max_installments"
-                        value={formData.max_installments}
-                        onChange={handleInputChange}
-                        min="1"
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Max Installments</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="max_installments"
+                      value={formData.max_installments}
+                      onChange={handleInputChange}
+                      min="1"
+                      max="12"
+                      required
+                    />
                   </div>
-                  <div className="col-md-4">
-                    <div className="form-group">
-                      <label className="form-label">
-                        <input
-                          type="checkbox"
-                          name="is_active"
-                          checked={formData.is_active}
-                          onChange={handleInputChange}
-                          className="me-2"
-                        />
-                        Active Product
-                      </label>
-                    </div>
+                  <div className="space-y-2 flex items-end">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        name="is_active"
+                        checked={formData.is_active}
+                        onChange={handleInputChange}
+                      />
+                      <span className="text-sm font-medium">Active Product</span>
+                    </label>
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={createProductMutation.isLoading || updateProductMutation.isLoading}
-                >
-                  {createProductMutation.isLoading || updateProductMutation.isLoading
-                    ? 'Saving...'
-                    : editingProduct
-                    ? 'Update Product'
-                    : 'Create Product'}
-                </button>
-              </div>
-            </form>
+            </div>
+            <div className="flex items-center justify-end p-6 border-t space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowModal(false)}
+                disabled={createProductMutation.isLoading || updateProductMutation.isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={createProductMutation.isLoading || updateProductMutation.isLoading}
+              >
+                {createProductMutation.isLoading || updateProductMutation.isLoading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {editingProduct ? 'Updating...' : 'Creating...'}
+                  </span>
+                ) : (
+                  editingProduct ? 'Update Product' : 'Create Product'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Category Modal */}
       {showCategoryModal && (
-        <div className="modal-overlay" onClick={() => setShowCategoryModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">Add New Category</h5>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowCategoryModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">Add New Category</h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowCategoryModal(false)}
               >
                 ×
               </button>
             </div>
-            <form onSubmit={handleCategorySubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Category Name</label>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Category Name</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     name="name"
                     value={categoryForm.name}
                     onChange={handleCategoryChange}
                     required
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Description</label>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Description</label>
                   <textarea
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     name="description"
                     value={categoryForm.description}
                     onChange={handleCategoryChange}
@@ -926,23 +1049,32 @@ const Products = () => {
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowCategoryModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={createCategoryMutation.isLoading}
-                >
-                  {createCategoryMutation.isLoading ? 'Creating...' : 'Create Category'}
-                </button>
-              </div>
-            </form>
+            </div>
+            <div className="flex items-center justify-end p-6 border-t space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowCategoryModal(false)}
+                disabled={createCategoryMutation.isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCategorySubmit}
+                disabled={createCategoryMutation.isLoading || !categoryForm.name.trim()}
+              >
+                {createCategoryMutation.isLoading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating...
+                  </span>
+                ) : (
+                  'Create Category'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}

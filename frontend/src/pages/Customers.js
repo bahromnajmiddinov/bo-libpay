@@ -9,6 +9,35 @@ import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Table as TableIcon, Grid, User, Mail, Phone, MapPin, Calendar, Package, CreditCard } from 'lucide-react';
+
+// View toggle component
+const ViewToggle = ({ view, onChange }) => (
+  <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
+    <button
+      onClick={() => onChange('table')}
+      className={`p-2 rounded-md transition-colors ${
+        view === 'table' 
+          ? 'bg-white shadow-sm border' 
+          : 'hover:bg-gray-100'
+      }`}
+      title="Table View"
+    >
+      <TableIcon size={18} />
+    </button>
+    <button
+      onClick={() => onChange('card')}
+      className={`p-2 rounded-md transition-colors ${
+        view === 'card' 
+          ? 'bg-white shadow-sm border' 
+          : 'hover:bg-gray-100'
+      }`}
+      title="Card View"
+    >
+      <Grid size={18} />
+    </button>
+  </div>
+);
 
 const Customers = () => {
   const [showModal, setShowModal] = useState(false);
@@ -22,6 +51,8 @@ const Customers = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [ageFilter, setAgeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [viewMode, setViewMode] = useState('table');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch customers
@@ -314,7 +345,11 @@ const Customers = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const calculateAge = (birthDate) => {
@@ -329,33 +364,148 @@ const Customers = () => {
     return age;
   };
 
+  // Card View Component
+  const CustomerCardView = ({ customers }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {customers.map((customer) => (
+        <Card key={customer.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-lg">{customer.full_name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Customer #{customer.id}
+                  </p>
+                </div>
+                <Badge variant="outline">
+                  {calculateAge(customer.date_of_birth)} yrs
+                </Badge>
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Mail size={16} className="text-muted-foreground" />
+                  <a 
+                    href={`mailto:${customer.email}`}
+                    className="text-sm hover:text-blue-600 transition-colors"
+                  >
+                    {customer.email}
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone size={16} className="text-muted-foreground" />
+                  <a 
+                    href={`tel:${customer.phone_number}`}
+                    className="text-sm hover:text-blue-600 transition-colors"
+                  >
+                    {customer.phone_number}
+                  </a>
+                </div>
+                {customer.address && (
+                  <div className="flex items-start space-x-2">
+                    <MapPin size={16} className="text-muted-foreground mt-0.5" />
+                    <span className="text-sm text-muted-foreground line-clamp-2">
+                      {customer.address}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Info */}
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center space-x-1">
+                  <Calendar size={14} className="text-muted-foreground" />
+                  <span>{formatDate(customer.created_at)}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-1 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewOrders(customer)}
+                >
+                  Orders
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generatePortalLink(customer)}
+                >
+                  Portal
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(customer)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(customer)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   if (isLoading) {
-    return <div className="loading">Loading customers...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg">Loading customers...</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
           <p className="text-muted-foreground">
             Manage your customer database with advanced filtering and insights
           </p>
         </div>
+        <div className="flex items-center space-x-2">
+          <ViewToggle view={viewMode} onChange={setViewMode} />
+          <Button
+            onClick={() => {
+              setEditingCustomer(null);
+              resetForm();
+              setShowModal(true);
+            }}
+          >
+            Add Customer
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Filter Toggle */}
+      <div className="lg:hidden">
         <Button
-          onClick={() => {
-            setEditingCustomer(null);
-            resetForm();
-            setShowModal(true);
-          }}
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
         >
-          Add Customer
+          <span>Filters & Search</span>
+          <span>{showMobileFilters ? '▲' : '▼'}</span>
         </Button>
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className={`${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
         <CardHeader>
           <CardTitle>Filters & Search</CardTitle>
           <CardDescription>
@@ -399,21 +549,6 @@ const Customers = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Page Size</label>
-              <Select
-                value={pageSize.toString()}
-                onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}
-              >
-                <option value="5">5 per page</option>
-                <option value="10">10 per page</option>
-                <option value="20">20 per page</option>
-                <option value="50">50 per page</option>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div className="space-y-2">
               <label className="text-sm font-medium">Sort By</label>
               <Select
                 value={sortBy}
@@ -425,6 +560,9 @@ const Customers = () => {
                 <option value="created_at">Created Date</option>
               </Select>
             </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Order</label>
               <Select
@@ -436,8 +574,20 @@ const Customers = () => {
               </Select>
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-medium">Page Size</label>
+              <Select
+                value={pageSize.toString()}
+                onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}
+              >
+                <option value="10">10 per page</option>
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-medium">Actions</label>
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button variant="outline" size="sm" onClick={clearFilters}>
                   Clear
                 </Button>
@@ -451,211 +601,284 @@ const Customers = () => {
             </div>
           </div>
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <Badge variant="secondary">
               {filteredAndSortedCustomers.length} customers found
             </Badge>
+            <div className="text-sm text-muted-foreground lg:hidden">
+              <Button variant="ghost" size="sm" onClick={() => setShowMobileFilters(false)}>
+                Close Filters
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Enhanced Stats Cards */}
+      {/* Stats Cards */}
       {stats && (
-        <div className="row mb-4">
-          <div className="col-md-3">
-            <div className="metric-card info slide-up">
-              <div className="metric-value">{stats.total_customers}</div>
-              <div className="metric-label">Total Customers</div>
-              <div className="metric-subtext">
-                {stats.active_customers} Active Customers
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <User className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Customers</p>
+                  <p className="text-2xl font-bold">{stats.total_customers}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.active_customers} Active Customers
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="metric-card success slide-up">
-              <div className="metric-value">{stats.active_customers}</div>
-              <div className="metric-label">Active Customers</div>
-              <div className="metric-subtext">
-                {((stats.active_customers / stats.total_customers) * 100).toFixed(1)}% of total
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <User className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Customers</p>
+                  <p className="text-2xl font-bold">{stats.active_customers}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {((stats.active_customers / stats.total_customers) * 100).toFixed(1)}% of total
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="metric-card warning slide-up">
-              <div className="metric-value">{stats.total_customers - stats.active_customers}</div>
-              <div className="metric-label">Inactive Customers</div>
-              <div className="metric-subtext">
-                May need attention
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <User className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Inactive Customers</p>
+                  <p className="text-2xl font-bold">{stats.total_customers - stats.active_customers}</p>
+                  <p className="text-xs text-muted-foreground">
+                    May need attention
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="metric-card danger slide-up">
-              <div className="metric-value">{filteredAndSortedCustomers.length}</div>
-              <div className="metric-label">Filtered Results</div>
-              <div className="metric-subtext">
-                Current view
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <User className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Filtered Results</p>
+                  <p className="text-2xl font-bold">{filteredAndSortedCustomers.length}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Current view
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Enhanced Customers Table */}
-      <div className="card-modern slide-up">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h6 className="chart-title">👥 Customers List</h6>
-            <div className="d-flex align-items-center gap-2">
-              <span className="badge-modern badge-info-modern">
-                Showing {Math.min(filteredAndSortedCustomers.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedCustomers.length, page * pageSize)} of {filteredAndSortedCustomers.length}
+      {/* Customers List */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle>
+                {viewMode === 'table' ? 'Customers List' : 'Customers Grid'}
+              </CardTitle>
+              <CardDescription>
+                {viewMode === 'table' 
+                  ? 'Manage your customers in table view' 
+                  : 'Manage your customers in card view'
+                }
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:block">
+                View:
+              </span>
+              <ViewToggle view={viewMode} onChange={setViewMode} />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {Array.isArray(paginatedCustomers) && paginatedCustomers.length > 0 ? (
+            <div className="space-y-4">
+              {viewMode === 'table' ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Age</TableHead>
+                        <TableHead>Address</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedCustomers.map((customer) => (
+                        <TableRow key={customer.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{customer.full_name}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <a 
+                              href={`mailto:${customer.email}`}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              {customer.email}
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            <a 
+                              href={`tel:${customer.phone_number}`}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              {customer.phone_number}
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {calculateAge(customer.date_of_birth)} years
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-muted-foreground max-w-xs truncate">
+                              {customer.address}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(customer.created_at)}</TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewOrders(customer)}
+                              >
+                                Orders
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => generatePortalLink(customer)}
+                              >
+                                Portal
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(customer)}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <CustomerCardView customers={paginatedCustomers} />
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">👥</div>
+              <h3 className="text-lg font-semibold mb-2">No Customers Found</h3>
+              <p className="text-muted-foreground">
+                No customers match your current filters. Try adjusting your search criteria.
+              </p>
+            </div>
+          )}
+        </CardContent>
+        
+        {/* Pagination */}
+        {Array.isArray(paginatedCustomers) && paginatedCustomers.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between p-6 pt-0 gap-4">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-muted-foreground">
+                Showing {Math.min(filteredAndSortedCustomers.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedCustomers.length, page * pageSize)} of {filteredAndSortedCustomers.length} customers
               </span>
             </div>
-          </div>
-          <div className="table-responsive">
-            <table className="table table-modern">
-              <thead>
-                <tr>
-                  <th>👤 Customer</th>
-                  <th>📧 Email</th>
-                  <th>📞 Phone</th>
-                  <th>🎂 Age</th>
-                  <th>📍 Address</th>
-                  <th>📅 Created</th>
-                  <th>⚙️ Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(paginatedCustomers) && paginatedCustomers.length > 0 ? (
-                  paginatedCustomers.map((customer) => (
-                    <tr key={customer.id}>
-                      <td>
-                        <div>
-                          <strong>{customer.full_name}</strong>
-                        </div>
-                      </td>
-                      <td>
-                        <a href={`mailto:${customer.email}`} className="text-decoration-none">
-                          {customer.email}
-                        </a>
-                      </td>
-                      <td>
-                        <a href={`tel:${customer.phone_number}`} className="text-decoration-none">
-                          {customer.phone_number}
-                        </a>
-                      </td>
-                      <td>
-                        <span className="badge-modern badge-info-modern">
-                          {calculateAge(customer.date_of_birth)} years
-                        </span>
-                      </td>
-                      <td>
-                        <small className="text-muted">{customer.address}</small>
-                      </td>
-                      <td>{formatDate(customer.created_at)}</td>
-                      <td>
-                        <div className="d-flex gap-1">
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => handleViewOrders(customer)}
-                            title="View Orders"
-                          >
-                            📋 Orders
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-info"
-                            onClick={() => generatePortalLink(customer)}
-                            title="Copy Portal Link"
-                          >
-                            🔗 Portal
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => handleEdit(customer)}
-                            title="Edit Customer"
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => handleDelete(customer)}
-                            title="Delete Customer"
-                          >
-                            🗑️ Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center py-4">
-                      <div className="empty-state">
-                        <div className="empty-state-icon">👥</div>
-                        <div className="empty-state-title">No Customers Found</div>
-                        <div className="empty-state-text">
-                          No customers match your current filters. Try adjusting your search criteria.
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="card-footer d-flex justify-content-between align-items-center">
-          <div>
-            <small className="text-muted">Showing {Math.min(filteredAndSortedCustomers.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedCustomers.length, page * pageSize)} of {filteredAndSortedCustomers.length} customers</small>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            <div className="btn-group">
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => handlePageChange(page - 1)} disabled={page <= 1}>Prev</button>
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => handlePageChange(page + 1)} disabled={page >= totalPages}>Next</button>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" disabled>
+                Page {page} of {totalPages}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
+        )}
+      </Card>
 
       {/* Customer Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">
                 {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
               </h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowModal(false)}
               >
                 ×
               </button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">First Name</label>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">First Name</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="first_name"
                         value={formData.first_name}
                         onChange={handleInputChange}
                         required
                       />
                     </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Last Name</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Last Name</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="last_name"
                         value={formData.last_name}
                         onChange={handleInputChange}
@@ -663,28 +886,24 @@ const Customers = () => {
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Email</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Email</label>
                       <input
                         type="email"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
                         required
                       />
                     </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label className="form-label">Phone Number</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Phone Number</label>
                       <input
                         type="tel"
-                        className="form-control"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="phone_number"
                         value={formData.phone_number}
                         onChange={handleInputChange}
@@ -692,50 +911,55 @@ const Customers = () => {
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">Address</label>
-                  <textarea
-                    className="form-control"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    rows="3"
-                    required
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Address</label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      rows="3"
+                      required
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Date of Birth (Optional)</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    name="date_of_birth"
-                    value={formData.date_of_birth}
-                    onChange={handleInputChange}
-                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">Date of Birth (Optional)</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      name="date_of_birth"
+                      value={formData.date_of_birth}
+                      onChange={handleInputChange}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+              <div className="flex items-center justify-end p-6 border-t space-x-3">
+                <Button
+                  variant="outline"
                   onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
                   disabled={createCustomerMutation.isLoading || updateCustomerMutation.isLoading}
                 >
-                  {createCustomerMutation.isLoading || updateCustomerMutation.isLoading
-                    ? 'Saving...'
-                    : editingCustomer
-                    ? 'Update Customer'
-                    : 'Create Customer'}
-                </button>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createCustomerMutation.isLoading || updateCustomerMutation.isLoading}
+                >
+                  {createCustomerMutation.isLoading || updateCustomerMutation.isLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {editingCustomer ? 'Updating...' : 'Creating...'}
+                    </span>
+                  ) : (
+                    editingCustomer ? 'Update Customer' : 'Create Customer'
+                  )}
+                </Button>
               </div>
             </form>
           </div>
@@ -744,73 +968,96 @@ const Customers = () => {
 
       {/* Orders Modal */}
       {showOrdersModal && selectedCustomer && (
-        <div className="modal-overlay" onClick={() => setShowOrdersModal(false)}>
-          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h5 className="modal-title">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+          onClick={() => setShowOrdersModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <h5 className="text-xl font-semibold">
                 Orders for {selectedCustomer.full_name}
               </h5>
               <button
                 type="button"
-                className="btn-close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 onClick={() => setShowOrdersModal(false)}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="p-6">
               {ordersLoading ? (
-                <div className="loading">Loading orders...</div>
+                <div className="flex justify-center items-center h-32">
+                  <div className="text-lg">Loading orders...</div>
+                </div>
               ) : customerOrders.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Order ID</th>
-                        <th>Product</th>
-                        <th>Total Amount</th>
-                        <th>Status</th>
-                        <th>Order Date</th>
-                        <th>Installments</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order ID</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Total Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Order Date</TableHead>
+                        <TableHead>Installments</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {customerOrders.map((order) => (
-                        <tr key={order.id}>
-                          <td>#{order.id}</td>
-                          <td>{order.product?.name}</td>
-                          <td>{formatCurrency(order.total_amount)}</td>
-                          <td>
-                            <span className={`badge ${
-                              order.status === 'completed' ? 'bg-success' :
-                              order.status === 'active' ? 'bg-primary' :
-                              order.status === 'approved' ? 'bg-info' :
-                              'bg-warning'
-                            }`}>
-                              {order.status}
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              #{order.id}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{order.product?.name}</TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(order.total_amount)}
                             </span>
-                          </td>
-                          <td>{formatDate(order.order_date)}</td>
-                          <td>{order.installment_count} months</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              order.status === 'completed' ? "default" :
+                              order.status === 'active' ? "secondary" :
+                              order.status === 'approved' ? "outline" :
+                              "destructive"
+                            }>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(order.order_date)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {order.installment_count} months
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
-                <div className="text-center text-muted py-4">
-                  No orders found for this customer.
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">📦</div>
+                  <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
+                  <p className="text-muted-foreground">
+                    This customer doesn't have any orders yet.
+                  </p>
                 </div>
               )}
             </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
+            <div className="flex items-center justify-end p-6 border-t">
+              <Button
+                variant="outline"
                 onClick={() => setShowOrdersModal(false)}
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
