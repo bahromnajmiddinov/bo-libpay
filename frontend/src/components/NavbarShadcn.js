@@ -20,7 +20,9 @@ const NavbarShadcn = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  
+  if (!user) return null;
+  
   const handleLogout = () => {
     logout();
     navigate('/login');
