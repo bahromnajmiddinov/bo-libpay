@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-// react-query not required for this simple login flow
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-// authService not used here; AuthContext.login is used instead
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/i18n';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Eye, EyeOff, LogIn, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, LogIn, User, Lock, Globe } from 'lucide-react';
 
-const LoginShadcn = () => {
+const LoginPage = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -19,8 +19,7 @@ const LoginShadcn = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-
-  // use the AuthContext login function directly
+  const { t } = useTranslation();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -37,44 +36,60 @@ const LoginShadcn = () => {
       try {
         const result = await login(formData.username, formData.password);
         if (result.success) {
-          toast.success('Login successful!');
+          toast.success(t('login_success'));
           navigate('/dashboard');
         } else {
-          toast.error(result.error || 'Login failed');
+          toast.error(result.error || t('login_failed'));
         }
       } catch (err) {
-        toast.error('Login failed');
+        toast.error(t('login_failed'));
       } finally {
         setLoading(false);
       }
     })();
   };
 
+  const changeLanguage = (e) => {
+    i18n.changeLanguage(e.target.value);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
               <LogIn className="h-6 w-6 text-primary-foreground" />
             </div>
+            <div className="flex items-center space-x-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <select
+                value={i18n.language}
+                onChange={changeLanguage}
+                className="text-sm border rounded-md px-2 py-1 bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="en">EN</option>
+                <option value="uz">UZ</option>
+                <option value="ru">RU</option>
+              </select>
+            </div>
           </div>
-          <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
+          <CardTitle className="text-2xl text-center">{t('welcome')}</CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your account
+            {t('enter_credentials')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t('username')}</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="username"
                   name="username"
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder={t('username_placeholder')}
                   value={formData.username}
                   onChange={handleInputChange}
                   className="pl-10"
@@ -83,14 +98,14 @@ const LoginShadcn = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder={t('password_placeholder')}
                   value={formData.password}
                   onChange={handleInputChange}
                   className="pl-10 pr-10"
@@ -113,24 +128,24 @@ const LoginShadcn = () => {
               {loading ? (
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
-                  <span>Signing in...</span>
+                  <span>{t('signing_in')}</span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">
                   <LogIn className="h-4 w-4" />
-                  <span>Sign In</span>
+                  <span>{t('sign_in')}</span>
                 </div>
               )}
             </Button>
           </form>
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
+              {t('dont_have_account')}{' '}
               <a
                 href="/register"
                 className="text-primary hover:underline font-medium"
               >
-                Sign up
+                {t('sign_up')}
               </a>
             </p>
           </div>
@@ -140,4 +155,4 @@ const LoginShadcn = () => {
   );
 };
 
-export default LoginShadcn;
+export default LoginPage;

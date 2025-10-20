@@ -10,34 +10,38 @@ import { Select } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Table as TableIcon, Grid, User, Mail, Phone, MapPin, Calendar, Package, CreditCard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // View toggle component
-const ViewToggle = ({ view, onChange }) => (
-  <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
-    <button
-      onClick={() => onChange('table')}
-      className={`p-2 rounded-md transition-colors ${
-        view === 'table' 
-          ? 'bg-white shadow-sm border' 
-          : 'hover:bg-gray-100'
-      }`}
-      title="Table View"
-    >
-      <TableIcon size={18} />
-    </button>
-    <button
-      onClick={() => onChange('card')}
-      className={`p-2 rounded-md transition-colors ${
-        view === 'card' 
-          ? 'bg-white shadow-sm border' 
-          : 'hover:bg-gray-100'
-      }`}
-      title="Card View"
-    >
-      <Grid size={18} />
-    </button>
-  </div>
-);
+const ViewToggle = ({ view, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
+      <button
+        onClick={() => onChange('table')}
+        className={`p-2 rounded-md transition-colors ${
+          view === 'table' 
+            ? 'bg-white shadow-sm border' 
+            : 'hover:bg-gray-100'
+        }`}
+        title={t('customers.table_view', 'Table View')}
+      >
+        <TableIcon size={18} />
+      </button>
+      <button
+        onClick={() => onChange('card')}
+        className={`p-2 rounded-md transition-colors ${
+          view === 'card' 
+            ? 'bg-white shadow-sm border' 
+            : 'hover:bg-gray-100'
+        }`}
+        title={t('customers.card_view', 'Card View')}
+      >
+        <Grid size={18} />
+      </button>
+    </div>
+  );
+};
 
 const Customers = () => {
   const [showModal, setShowModal] = useState(false);
@@ -54,6 +58,7 @@ const Customers = () => {
   const [viewMode, setViewMode] = useState('table');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   // Fetch customers
   const { data: customersData, isLoading } = useQuery(
@@ -176,12 +181,12 @@ const Customers = () => {
     onSuccess: () => {
       queryClient.invalidateQueries('customers');
       queryClient.invalidateQueries('customerStats');
-      toast.success('Customer created successfully!');
+      toast.success(t('customers.customer_created', 'Customer created successfully!'));
       setShowModal(false);
       resetForm();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to create customer');
+      toast.error(error.response?.data?.error || t('customers.create_failed', 'Failed to create customer'));
     },
   });
 
@@ -191,13 +196,13 @@ const Customers = () => {
       onSuccess: () => {
         queryClient.invalidateQueries('customers');
         queryClient.invalidateQueries('customerStats');
-        toast.success('Customer updated successfully!');
+        toast.success(t('customers.customer_updated', 'Customer updated successfully!'));
         setShowModal(false);
         setEditingCustomer(null);
         resetForm();
       },
       onError: (error) => {
-        toast.error(error.response?.data?.error || 'Failed to update customer');
+        toast.error(error.response?.data?.error || t('customers.update_failed', 'Failed to update customer'));
       },
     }
   );
@@ -206,10 +211,10 @@ const Customers = () => {
     onSuccess: () => {
       queryClient.invalidateQueries('customers');
       queryClient.invalidateQueries('customerStats');
-      toast.success('Customer deleted successfully!');
+      toast.success(t('customers.customer_deleted', 'Customer deleted successfully!'));
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to delete customer');
+      toast.error(error.response?.data?.error || t('customers.delete_failed', 'Failed to delete customer'));
     },
   });
 
@@ -269,7 +274,7 @@ const Customers = () => {
   };
 
   const handleDelete = (customer) => {
-    if (window.confirm(`Are you sure you want to delete "${customer.full_name}"?`)) {
+    if (window.confirm(t('customers.delete_confirm', `Are you sure you want to delete "${customer.full_name}"?`))) {
       deleteCustomerMutation.mutate(customer.id);
     }
   };
@@ -282,7 +287,7 @@ const Customers = () => {
   const generatePortalLink = (customer) => {
     const portalUrl = `${window.location.origin}/customer-portal/${customer.id}`;
     navigator.clipboard.writeText(portalUrl);
-    toast.success('Portal link copied to clipboard!');
+    toast.success(t('customers.portal_copied', 'Portal link copied to clipboard!'));
   };
 
   const handlePageChange = (newPage) => {
@@ -293,12 +298,12 @@ const Customers = () => {
 
   const handleExport = (format) => {
     const dataToExport = filteredAndSortedCustomers.map(customer => ({
-      'Name': customer.full_name,
-      'Email': customer.email,
-      'Phone': customer.phone_number,
-      'Age': calculateAge(customer.date_of_birth),
-      'Address': customer.address,
-      'Created Date': customer.created_at ? new Date(customer.created_at).toLocaleDateString() : 'N/A'
+      [t('customers.name')]: customer.full_name,
+      [t('customers.email')]: customer.email,
+      [t('customers.phone')]: customer.phone_number,
+      [t('customers.age')]: calculateAge(customer.date_of_birth),
+      [t('customers.address')]: customer.address,
+      [t('customers.created_date')]: customer.created_at ? new Date(customer.created_at).toLocaleDateString() : 'N/A'
     }));
 
     if (format === 'csv') {
@@ -325,7 +330,7 @@ const Customers = () => {
       window.URL.revokeObjectURL(url);
     }
     
-    toast.success(`Customers exported as ${format.toUpperCase()} successfully!`);
+    toast.success(t('customers.export_success', `Customers exported as ${format.toUpperCase()} successfully!`));
   };
 
   const clearFilters = () => {
@@ -353,7 +358,7 @@ const Customers = () => {
   };
 
   const calculateAge = (birthDate) => {
-    if (!birthDate) return 'N/A';
+    if (!birthDate) return t('customers.na', 'N/A');
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
@@ -376,11 +381,11 @@ const Customers = () => {
                 <div>
                   <h3 className="font-semibold text-lg">{customer.full_name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Customer #{customer.id}
+                    {t('customers.customer_id', { id: customer.id })}
                   </p>
                 </div>
                 <Badge variant="outline">
-                  {calculateAge(customer.date_of_birth)} yrs
+                  {calculateAge(customer.date_of_birth)} {t('customers.years')}
                 </Badge>
               </div>
 
@@ -429,28 +434,28 @@ const Customers = () => {
                   size="sm"
                   onClick={() => handleViewOrders(customer)}
                 >
-                  Orders
+                  {t('customers.view_orders')}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => generatePortalLink(customer)}
                 >
-                  Portal
+                  {t('customers.portal')}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleEdit(customer)}
                 >
-                  Edit
+                  {t('customers.edit')}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleDelete(customer)}
                 >
-                  Delete
+                  {t('customers.delete')}
                 </Button>
               </div>
             </div>
@@ -463,7 +468,7 @@ const Customers = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-lg">Loading customers...</div>
+        <div className="text-lg">{t('loading', 'Loading customers...')}</div>
       </div>
     );
   }
@@ -473,9 +478,9 @@ const Customers = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('customers.title')}</h1>
           <p className="text-muted-foreground">
-            Manage your customer database with advanced filtering and insights
+            {t('customers.description')}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -487,7 +492,7 @@ const Customers = () => {
               setShowModal(true);
             }}
           >
-            Add Customer
+            {t('customers.add_customer')}
           </Button>
         </div>
       </div>
@@ -499,7 +504,7 @@ const Customers = () => {
           className="w-full justify-between"
           onClick={() => setShowMobileFilters(!showMobileFilters)}
         >
-          <span>Filters & Search</span>
+          <span>{t('customers.filters_search')}</span>
           <span>{showMobileFilters ? '▲' : '▼'}</span>
         </Button>
       </div>
@@ -507,95 +512,95 @@ const Customers = () => {
       {/* Filters */}
       <Card className={`${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
         <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
+          <CardTitle>{t('customers.filters_search')}</CardTitle>
           <CardDescription>
-            Filter and search your customers
+            {t('customers.filters_description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
+              <label className="text-sm font-medium">{t('customers.search', 'Search')}</label>
               <Input
-                placeholder="Search by name, email or phone..."
+                placeholder={t('customers.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Age Group</label>
+              <label className="text-sm font-medium">{t('customers.age_group')}</label>
               <Select
                 value={ageFilter}
                 onChange={(e) => { setAgeFilter(e.target.value); setPage(1); }}
               >
-                <option value="">All Ages</option>
-                <option value="18-25">18-25 years</option>
-                <option value="26-35">26-35 years</option>
-                <option value="36-50">36-50 years</option>
-                <option value="50+">50+ years</option>
+                <option value="">{t('customers.all_ages')}</option>
+                <option value="18-25">{t('customers.18_25')}</option>
+                <option value="26-35">{t('customers.26_35')}</option>
+                <option value="36-50">{t('customers.36_50')}</option>
+                <option value="50+">{t('customers.50_plus')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Registration Period</label>
+              <label className="text-sm font-medium">{t('customers.registration_period')}</label>
               <Select
                 value={dateFilter}
                 onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
               >
-                <option value="">All Time</option>
-                <option value="today">Today</option>
-                <option value="week">Last Week</option>
-                <option value="month">Last Month</option>
-                <option value="year">Last Year</option>
+                <option value="">{t('customers.all_time')}</option>
+                <option value="today">{t('customers.today')}</option>
+                <option value="week">{t('customers.week')}</option>
+                <option value="month">{t('customers.month')}</option>
+                <option value="year">{t('customers.year')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium">{t('customers.sort_by')}</label>
               <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="full_name">Name</option>
-                <option value="email">Email</option>
-                <option value="age">Age</option>
-                <option value="created_at">Created Date</option>
+                <option value="full_name">{t('customers.name')}</option>
+                <option value="email">{t('customers.email')}</option>
+                <option value="age">{t('customers.age')}</option>
+                <option value="created_at">{t('customers.created_date')}</option>
               </Select>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Order</label>
+              <label className="text-sm font-medium">{t('customers.order')}</label>
               <Select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
               >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
+                <option value="asc">{t('customers.ascending')}</option>
+                <option value="desc">{t('customers.descending')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Page Size</label>
+              <label className="text-sm font-medium">{t('customers.page_size')}</label>
               <Select
                 value={pageSize.toString()}
                 onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}
               >
-                <option value="10">10 per page</option>
-                <option value="25">25 per page</option>
-                <option value="50">50 per page</option>
-                <option value="100">100 per page</option>
+                <option value="10">10 {t('customers.per_page')}</option>
+                <option value="25">25 {t('customers.per_page')}</option>
+                <option value="50">50 {t('customers.per_page')}</option>
+                <option value="100">100 {t('customers.per_page')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Actions</label>
+              <label className="text-sm font-medium">{t('customers.actions')}</label>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear
+                  {t('customers.clear')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
-                  Export CSV
+                  {t('customers.export_csv')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
-                  Export JSON
+                  {t('customers.export_json')}
                 </Button>
               </div>
             </div>
@@ -603,11 +608,11 @@ const Customers = () => {
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <Badge variant="secondary">
-              {filteredAndSortedCustomers.length} customers found
+              {t('customers.customers_found', { count: filteredAndSortedCustomers.length })}
             </Badge>
             <div className="text-sm text-muted-foreground lg:hidden">
               <Button variant="ghost" size="sm" onClick={() => setShowMobileFilters(false)}>
-                Close Filters
+                {t('customers.close_filters')}
               </Button>
             </div>
           </div>
@@ -624,10 +629,10 @@ const Customers = () => {
                   <User className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Customers</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('customers.total_customers')}</p>
                   <p className="text-2xl font-bold">{stats.total_customers}</p>
                   <p className="text-xs text-muted-foreground">
-                    {stats.active_customers} Active Customers
+                    {t('customers.active_of_total', { active: stats.active_customers })}
                   </p>
                 </div>
               </div>
@@ -640,10 +645,12 @@ const Customers = () => {
                   <User className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Customers</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('customers.active_customers')}</p>
                   <p className="text-2xl font-bold">{stats.active_customers}</p>
                   <p className="text-xs text-muted-foreground">
-                    {((stats.active_customers / stats.total_customers) * 100).toFixed(1)}% of total
+                    {t('customers.percentage_of_total', { 
+                      percentage: ((stats.active_customers / stats.total_customers) * 100).toFixed(1) 
+                    })}
                   </p>
                 </div>
               </div>
@@ -656,10 +663,10 @@ const Customers = () => {
                   <User className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Inactive Customers</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('customers.inactive_customers')}</p>
                   <p className="text-2xl font-bold">{stats.total_customers - stats.active_customers}</p>
                   <p className="text-xs text-muted-foreground">
-                    May need attention
+                    {t('customers.may_need_attention')}
                   </p>
                 </div>
               </div>
@@ -672,10 +679,10 @@ const Customers = () => {
                   <User className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Filtered Results</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('customers.filtered_results')}</p>
                   <p className="text-2xl font-bold">{filteredAndSortedCustomers.length}</p>
                   <p className="text-xs text-muted-foreground">
-                    Current view
+                    {t('customers.current_view')}
                   </p>
                 </div>
               </div>
@@ -690,18 +697,18 @@ const Customers = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle>
-                {viewMode === 'table' ? 'Customers List' : 'Customers Grid'}
+                {viewMode === 'table' ? t('customers.customers_list') : t('customers.customers_grid')}
               </CardTitle>
               <CardDescription>
                 {viewMode === 'table' 
-                  ? 'Manage your customers in table view' 
-                  : 'Manage your customers in card view'
+                  ? t('customers.table_view_description') 
+                  : t('customers.card_view_description')
                 }
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground hidden sm:block">
-                View:
+                {t('customers.view', 'View')}:
               </span>
               <ViewToggle view={viewMode} onChange={setViewMode} />
             </div>
@@ -715,13 +722,13 @@ const Customers = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Age</TableHead>
-                        <TableHead>Address</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>{t('customers.customer')}</TableHead>
+                        <TableHead>{t('customers.email')}</TableHead>
+                        <TableHead>{t('customers.phone')}</TableHead>
+                        <TableHead>{t('customers.age')}</TableHead>
+                        <TableHead>{t('customers.address')}</TableHead>
+                        <TableHead>{t('customers.created')}</TableHead>
+                        <TableHead>{t('customers.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -750,7 +757,7 @@ const Customers = () => {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {calculateAge(customer.date_of_birth)} years
+                              {calculateAge(customer.date_of_birth)} {t('customers.years')}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -766,21 +773,21 @@ const Customers = () => {
                                 size="sm"
                                 onClick={() => handleViewOrders(customer)}
                               >
-                                Orders
+                                {t('customers.view_orders')}
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => generatePortalLink(customer)}
                               >
-                                Portal
+                                {t('customers.portal')}
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleEdit(customer)}
                               >
-                                Edit
+                                {t('customers.edit')}
                               </Button>
                             </div>
                           </TableCell>
@@ -796,9 +803,9 @@ const Customers = () => {
           ) : (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">👥</div>
-              <h3 className="text-lg font-semibold mb-2">No Customers Found</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('customers.no_customers_found')}</h3>
               <p className="text-muted-foreground">
-                No customers match your current filters. Try adjusting your search criteria.
+                {t('customers.no_customers_description')}
               </p>
             </div>
           )}
@@ -809,7 +816,11 @@ const Customers = () => {
           <div className="flex flex-col sm:flex-row items-center justify-between p-6 pt-0 gap-4">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-muted-foreground">
-                Showing {Math.min(filteredAndSortedCustomers.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedCustomers.length, page * pageSize)} of {filteredAndSortedCustomers.length} customers
+                {t('customers.showing', { 
+                  from: Math.min(filteredAndSortedCustomers.length, (page - 1) * pageSize + 1), 
+                  to: Math.min(filteredAndSortedCustomers.length, page * pageSize), 
+                  total: filteredAndSortedCustomers.length 
+                })}
               </span>
             </div>
             <div className="flex space-x-2">
@@ -819,10 +830,10 @@ const Customers = () => {
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
               >
-                Previous
+                {t('customers.previous')}
               </Button>
               <Button variant="outline" size="sm" disabled>
-                Page {page} of {totalPages}
+                {t('customers.page')} {page} {t('customers.of')} {totalPages}
               </Button>
               <Button
                 variant="outline"
@@ -830,7 +841,7 @@ const Customers = () => {
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page === totalPages}
               >
-                Next
+                {t('customers.next')}
               </Button>
             </div>
           </div>
@@ -849,7 +860,7 @@ const Customers = () => {
           >
             <div className="flex items-center justify-between p-6 border-b">
               <h5 className="text-xl font-semibold">
-                {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+                {editingCustomer ? t('customers.edit_customer') : t('customers.add_new_customer')}
               </h5>
               <button
                 type="button"
@@ -864,7 +875,7 @@ const Customers = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">First Name</label>
+                      <label className="block text-sm font-medium">{t('customers.first_name')}</label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -875,7 +886,7 @@ const Customers = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Last Name</label>
+                      <label className="block text-sm font-medium">{t('customers.last_name')}</label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -889,7 +900,7 @@ const Customers = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Email</label>
+                      <label className="block text-sm font-medium">{t('customers.email')}</label>
                       <input
                         type="email"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -900,7 +911,7 @@ const Customers = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Phone Number</label>
+                      <label className="block text-sm font-medium">{t('customers.phone_number')}</label>
                       <input
                         type="tel"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -913,7 +924,7 @@ const Customers = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Address</label>
+                    <label className="block text-sm font-medium">{t('customers.address')}</label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       name="address"
@@ -925,7 +936,7 @@ const Customers = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Date of Birth (Optional)</label>
+                    <label className="block text-sm font-medium">{t('customers.date_of_birth')}</label>
                     <input
                       type="date"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -942,7 +953,7 @@ const Customers = () => {
                   onClick={() => setShowModal(false)}
                   disabled={createCustomerMutation.isLoading || updateCustomerMutation.isLoading}
                 >
-                  Cancel
+                  {t('customers.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -954,10 +965,10 @@ const Customers = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      {editingCustomer ? 'Updating...' : 'Creating...'}
+                      {editingCustomer ? t('customers.updating') : t('customers.creating')}
                     </span>
                   ) : (
-                    editingCustomer ? 'Update Customer' : 'Create Customer'
+                    editingCustomer ? t('customers.update_customer') : t('customers.create_customer')
                   )}
                 </Button>
               </div>
@@ -978,7 +989,7 @@ const Customers = () => {
           >
             <div className="flex items-center justify-between p-6 border-b">
               <h5 className="text-xl font-semibold">
-                Orders for {selectedCustomer.full_name}
+                {t('customers.orders_for', { name: selectedCustomer.full_name })}
               </h5>
               <button
                 type="button"
@@ -991,19 +1002,19 @@ const Customers = () => {
             <div className="p-6">
               {ordersLoading ? (
                 <div className="flex justify-center items-center h-32">
-                  <div className="text-lg">Loading orders...</div>
+                  <div className="text-lg">{t('customers.loading_orders')}</div>
                 </div>
               ) : customerOrders.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Order Date</TableHead>
-                        <TableHead>Installments</TableHead>
+                        <TableHead>{t('customers.order_id')}</TableHead>
+                        <TableHead>{t('customers.product')}</TableHead>
+                        <TableHead>{t('customers.total_amount')}</TableHead>
+                        <TableHead>{t('customers.status')}</TableHead>
+                        <TableHead>{t('customers.order_date')}</TableHead>
+                        <TableHead>{t('customers.installments')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1033,7 +1044,7 @@ const Customers = () => {
                           <TableCell>{formatDate(order.order_date)}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {order.installment_count} months
+                              {order.installment_count} {t('products.months')}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -1044,9 +1055,9 @@ const Customers = () => {
               ) : (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">📦</div>
-                  <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('customers.no_orders_found')}</h3>
                   <p className="text-muted-foreground">
-                    This customer doesn't have any orders yet.
+                    {t('customers.no_orders_description')}
                   </p>
                 </div>
               )}
@@ -1056,7 +1067,7 @@ const Customers = () => {
                 variant="outline"
                 onClick={() => setShowOrdersModal(false)}
               >
-                Close
+                {t('customers.close')}
               </Button>
             </div>
           </div>

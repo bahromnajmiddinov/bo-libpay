@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/i18n';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { Eye, EyeOff, User, Mail, Building, MapPin, Phone, FileText, Lock, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Building, MapPin, Phone, FileText, Lock, CheckCircle, XCircle, Globe, ChevronDown } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -24,6 +26,7 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [errors, setErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
@@ -31,49 +34,50 @@ const Register = () => {
   });
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const validateForm = () => {
     const newErrors = {};
 
     // Personal information validation
     if (!formData.user.first_name?.trim()) {
-      newErrors.first_name = 'First name is required';
+      newErrors.first_name = t('register.validation.first_name_required');
     }
     if (!formData.user.last_name?.trim()) {
-      newErrors.last_name = 'Last name is required';
+      newErrors.last_name = t('register.validation.last_name_required');
     }
     if (!formData.user.username?.trim()) {
-      newErrors.username = 'Username is required';
+      newErrors.username = t('register.validation.username_required');
     } else if (formData.user.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
+      newErrors.username = t('register.validation.username_min_length');
     }
     if (!formData.user.email?.trim()) {
-      newErrors.personal_email = 'Personal email is required';
+      newErrors.personal_email = t('register.validation.personal_email_required');
     } else if (!/\S+@\S+\.\S+/.test(formData.user.email)) {
-      newErrors.personal_email = 'Please enter a valid email address';
+      newErrors.personal_email = t('register.validation.personal_email_invalid');
     }
     if (!formData.user.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('register.validation.password_required');
     } else if (formData.user.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = t('register.validation.password_min_length');
     } else if (passwordStrength.score < 2) {
-      newErrors.password = 'Please choose a stronger password';
+      newErrors.password = t('register.validation.password_weak');
     }
 
     // Business information validation
     if (!formData.business_name?.trim()) {
-      newErrors.business_name = 'Business name is required';
+      newErrors.business_name = t('register.validation.business_name_required');
     }
     if (!formData.business_address?.trim()) {
-      newErrors.business_address = 'Business address is required';
+      newErrors.business_address = t('register.validation.business_address_required');
     }
     if (!formData.phone_number?.trim()) {
-      newErrors.phone_number = 'Phone number is required';
+      newErrors.phone_number = t('register.validation.phone_number_required');
     }
     if (!formData.email?.trim()) {
-      newErrors.business_email = 'Business email is required';
+      newErrors.business_email = t('register.validation.business_email_required');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.business_email = 'Please enter a valid email address';
+      newErrors.business_email = t('register.validation.business_email_invalid');
     }
 
     setErrors(newErrors);
@@ -87,31 +91,31 @@ const Register = () => {
     if (password.length >= 8) {
       score++;
     } else {
-      feedback.push('At least 8 characters');
+      feedback.push(t('register.min_chars'));
     }
 
     if (/[A-Z]/.test(password)) {
       score++;
     } else {
-      feedback.push('One uppercase letter');
+      feedback.push(t('register.uppercase'));
     }
 
     if (/[a-z]/.test(password)) {
       score++;
     } else {
-      feedback.push('One lowercase letter');
+      feedback.push(t('register.lowercase'));
     }
 
     if (/[0-9]/.test(password)) {
       score++;
     } else {
-      feedback.push('One number');
+      feedback.push(t('register.number'));
     }
 
     if (/[^A-Za-z0-9]/.test(password)) {
       score++;
     } else {
-      feedback.push('One special character');
+      feedback.push(t('register.special_char'));
     }
 
     setPasswordStrength({ score, feedback });
@@ -151,7 +155,7 @@ const Register = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast.error('Please fix the errors in the form');
+      toast.error(t('register.fix_errors'));
       return;
     }
 
@@ -161,13 +165,13 @@ const Register = () => {
       const result = await register(formData);
       
       if (result.success) {
-        toast.success('🎉 Registration successful! Welcome to our platform.');
+        toast.success(t('success'));
         navigate('/dashboard');
       } else {
-        toast.error(result.error || 'Registration failed. Please try again.');
+        toast.error(result.error || t('failed'));
       }
     } catch (error) {
-      toast.error('An unexpected error occurred during registration');
+      toast.error(t('error'));
       console.error('Registration error:', error);
     } finally {
       setLoading(false);
@@ -182,10 +186,19 @@ const Register = () => {
   };
 
   const getPasswordStrengthText = () => {
-    if (passwordStrength.score === 0) return 'Enter a password';
-    if (passwordStrength.score <= 2) return 'Weak';
-    if (passwordStrength.score <= 3) return 'Good';
-    return 'Strong';
+    if (passwordStrength.score === 0) return t('enter_password');
+    if (passwordStrength.score <= 2) return t('weak');
+    if (passwordStrength.score <= 3) return t('good');
+    return t('strong');
+  };
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setShowLanguageDropdown(false);
+  };
+
+  const getCurrentLanguageName = () => {
+    return i18n.language === 'uz' ? "O'zbekcha" :i18n.language=== "en"? "English":"Russian";
   };
 
   return (
@@ -197,20 +210,62 @@ const Register = () => {
             <Building className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Start Your Business Journey
+            {t('register.title')}
           </h1>
           <p className="text-lg text-gray-600 max-w-md mx-auto">
-            Join thousands of sellers who are growing their business with our platform
+            {t('register.subtitle')}
           </p>
         </div>
 
         <Card className="shadow-2xl border-0">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-bold text-gray-900">
-              Create Seller Account
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex-1"></div>
+              <CardTitle className="text-2xl font-bold text-gray-900 flex-1 text-center">
+                {t('register.card_title')}
+              </CardTitle>
+              <div className="flex-1 flex justify-end">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                    className="flex items-center space-x-2 px-3 py-2 text-sm border rounded-md bg-background hover:bg-accent"
+                  >
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span>{getCurrentLanguageName()}</span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  
+                  {showLanguageDropdown && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-background border rounded-md shadow-lg z-10">
+                      <button
+                        type="button"
+                        onClick={() => changeLanguage('en')}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-accent first:rounded-t-md last:rounded-b-md"
+                      >
+                        EN
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => changeLanguage('uz')}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-accent first:rounded-t-md last:rounded-b-md"
+                      >
+                        UZ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => changeLanguage('ru')}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-accent first:rounded-t-md last:rounded-b-md"
+                      >
+                        RU
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
             <CardDescription className="text-gray-600">
-              Fill in your details to start managing your business efficiently
+              {t('register.card_description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
@@ -219,13 +274,13 @@ const Register = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <User className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('register.personal_info')}</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label htmlFor="user.first_name" className="text-sm font-medium text-gray-700 flex items-center">
-                      First Name
+                      {t('register.first_name')}
                     </label>
                     <div className="relative">
                       <Input
@@ -233,7 +288,7 @@ const Register = () => {
                         name="user.first_name"
                         value={formData.user.first_name}
                         onChange={handleChange}
-                        placeholder="Enter your first name"
+                        placeholder={t('register.first_name_placeholder')}
                         className={`pl-10 ${errors.first_name ? 'border-red-500' : ''}`}
                         required
                       />
@@ -249,14 +304,14 @@ const Register = () => {
                   
                   <div className="space-y-2">
                     <label htmlFor="user.last_name" className="text-sm font-medium text-gray-700">
-                      Last Name
+                      {t('register.last_name')}
                     </label>
                     <Input
                       id="user.last_name"
                       name="user.last_name"
                       value={formData.user.last_name}
                       onChange={handleChange}
-                      placeholder="Enter your last name"
+                      placeholder={t('register.last_name_placeholder')}
                       className={errors.last_name ? 'border-red-500' : ''}
                       required
                     />
@@ -271,14 +326,14 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="user.username" className="text-sm font-medium text-gray-700">
-                    Username
+                    {t('register.username')}
                   </label>
                   <Input
                     id="user.username"
                     name="user.username"
                     value={formData.user.username}
                     onChange={handleChange}
-                    placeholder="Choose a unique username"
+                    placeholder={t('register.username_placeholder')}
                     className={errors.username ? 'border-red-500' : ''}
                     required
                   />
@@ -292,7 +347,7 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="user.email" className="text-sm font-medium text-gray-700 flex items-center">
-                    Personal Email
+                    {t('register.personal_email')}
                   </label>
                   <div className="relative">
                     <Input
@@ -301,7 +356,7 @@ const Register = () => {
                       name="user.email"
                       value={formData.user.email}
                       onChange={handleChange}
-                      placeholder="your.email@example.com"
+                      placeholder={t('register.personal_email_placeholder')}
                       className={`pl-10 ${errors.personal_email ? 'border-red-500' : ''}`}
                       required
                     />
@@ -317,7 +372,7 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="user.password" className="text-sm font-medium text-gray-700 flex items-center">
-                    Password
+                    {t('register.password')}
                   </label>
                   <div className="relative">
                     <Input
@@ -326,7 +381,7 @@ const Register = () => {
                       name="user.password"
                       value={formData.user.password}
                       onChange={handleChange}
-                      placeholder="Create a strong password"
+                      placeholder={t('register.password_placeholder')}
                       className={`pr-10 ${errors.password ? 'border-red-500' : ''}`}
                       required
                     />
@@ -343,7 +398,7 @@ const Register = () => {
                   {formData.user.password && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Password strength:</span>
+                        <span className="text-sm text-gray-600">{t('register.password_strength')}</span>
                         <span className={`text-sm font-medium ${
                           passwordStrength.score <= 2 ? 'text-red-600' :
                           passwordStrength.score <= 3 ? 'text-yellow-600' : 'text-green-600'
@@ -359,7 +414,7 @@ const Register = () => {
                       </div>
                       {passwordStrength.feedback.length > 0 && (
                         <div className="text-sm text-gray-600">
-                          <p className="font-medium mb-1">Requirements:</p>
+                          <p className="font-medium mb-1">{t('requirements')}</p>
                           <ul className="space-y-1">
                             {passwordStrength.feedback.map((item, index) => (
                               <li key={index} className="flex items-center">
@@ -386,12 +441,12 @@ const Register = () => {
               <div className="space-y-4 pt-6 border-t">
                 <div className="flex items-center space-x-2">
                   <Building className="h-5 w-5 text-green-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Business Information</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('register.business_info')}</h3>
                 </div>
 
                 <div className="space-y-2">
                   <label htmlFor="business_name" className="text-sm font-medium text-gray-700 flex items-center">
-                    Business Name
+                    {t('register.business_name')}
                   </label>
                   <div className="relative">
                     <Input
@@ -399,7 +454,7 @@ const Register = () => {
                       name="business_name"
                       value={formData.business_name}
                       onChange={handleChange}
-                      placeholder="Enter your business name"
+                      placeholder={t('register.business_name_placeholder')}
                       className={`pl-10 ${errors.business_name ? 'border-red-500' : ''}`}
                       required
                     />
@@ -415,7 +470,7 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="business_address" className="text-sm font-medium text-gray-700 flex items-center">
-                    Business Address
+                    {t('register.business_address')}
                   </label>
                   <div className="relative">
                     <textarea
@@ -426,7 +481,7 @@ const Register = () => {
                       name="business_address"
                       value={formData.business_address}
                       onChange={handleChange}
-                      placeholder="Enter your complete business address"
+                      placeholder={t('register.business_address_placeholder')}
                       required
                     />
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -442,7 +497,7 @@ const Register = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label htmlFor="phone_number" className="text-sm font-medium text-gray-700 flex items-center">
-                      Phone Number
+                      {t('register.phone_number')}
                     </label>
                     <div className="relative">
                       <Input
@@ -451,7 +506,7 @@ const Register = () => {
                         name="phone_number"
                         value={formData.phone_number}
                         onChange={handleChange}
-                        placeholder="+1 (555) 123-4567"
+                        placeholder={t('register.phone_number_placeholder')}
                         className={`pl-10 ${errors.phone_number ? 'border-red-500' : ''}`}
                         required
                       />
@@ -467,7 +522,7 @@ const Register = () => {
                   
                   <div className="space-y-2">
                     <label htmlFor="email" className="text-sm font-medium text-gray-700">
-                      Business Email
+                      {t('register.business_email')}
                     </label>
                     <Input
                       type="email"
@@ -475,7 +530,7 @@ const Register = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="business@example.com"
+                      placeholder={t('register.business_email_placeholder')}
                       className={errors.business_email ? 'border-red-500' : ''}
                       required
                     />
@@ -490,7 +545,7 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="tax_id" className="text-sm font-medium text-gray-700 flex items-center">
-                    Tax ID (Optional)
+                    {t('register.tax_id')}
                   </label>
                   <div className="relative">
                     <Input
@@ -498,7 +553,7 @@ const Register = () => {
                       name="tax_id"
                       value={formData.tax_id}
                       onChange={handleChange}
-                      placeholder="Enter your tax identification number"
+                      placeholder={t('register.tax_id_placeholder')}
                       className="pl-10"
                     />
                     <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -515,12 +570,12 @@ const Register = () => {
                 {loading ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Creating Your Account...</span>
+                    <span>{t('register.creating_account')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="h-5 w-5" />
-                    <span>Create Seller Account</span>
+                    <span>{t('register.create_account')}</span>
                   </div>
                 )}
               </Button>
@@ -529,13 +584,13 @@ const Register = () => {
             {/* Login Link */}
             <div className="text-center mt-6 pt-6 border-t">
               <p className="text-sm text-gray-600">
-                Already have an account?
+                {t('register.already_have_account')}
               </p>
               <Link 
                 to="/login" 
                 className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors mt-1"
               >
-                Sign in to your account
+                {t('register.sign_in')}
                 <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -547,7 +602,7 @@ const Register = () => {
               <div className="flex items-start space-x-2">
                 <Lock className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-blue-700">
-                  Your information is secure and encrypted. We never share your personal or business details with third parties.
+                  {t('register.security_notice')}
                 </p>
               </div>
             </div>

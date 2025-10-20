@@ -19,12 +19,12 @@ import {
   Calendar,
   FileText,
   CreditCard,
-  PieChart,
   Download,
   Filter,
   Eye,
   EyeOff
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ReportsShadcn = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -35,6 +35,7 @@ const ReportsShadcn = () => {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const { t } = useTranslation();
 
   // Fetch reports summary
   const { data: reportsData, isLoading: reportsLoading } = useQuery(
@@ -140,7 +141,7 @@ const ReportsShadcn = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading reports...</p>
+          <p className="text-muted-foreground">{t('reports.loading_reports', 'Loading reports...')}</p>
         </div>
       </div>
     );
@@ -150,39 +151,26 @@ const ReportsShadcn = () => {
   const productPerformance = reportsData?.product_performance || [];
   const paymentMethods = reportsData?.payment_methods || [];
 
-  // Prepare data for donut charts
-  const orderStatusData = [
-    { label: 'Pending', value: summary.orders?.pending || 0 },
-    { label: 'Active', value: summary.orders?.active || 0 },
-    { label: 'Completed', value: summary.orders?.completed || 0 },
-  ];
-
-  const paymentStatusData = [
-    { label: 'Paid', value: summary.installments?.paid || 0 },
-    { label: 'Due Today', value: summary.installments?.due_today || 0 },
-    { label: 'Overdue', value: summary.installments?.overdue || 0 },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('reports.title')}</h1>
           <p className="text-muted-foreground">
-            Comprehensive business insights and performance metrics
+            {t('reports.description')}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="90">Last 90 Days</option>
-            <option value="365">Last Year</option>
+            <option value="7">{t('reports.periods.7')}</option>
+            <option value="30">{t('reports.periods.30')}</option>
+            <option value="90">{t('reports.periods.90')}</option>
+            <option value="365">{t('reports.periods.365')}</option>
           </Select>
           <Button variant="outline" size="sm">
             <Download className="mr-2 h-4 w-4" />
-            Export Report
+            {t('reports.export_report')}
           </Button>
         </div>
       </div>
@@ -192,19 +180,19 @@ const ReportsShadcn = () => {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="summary" className="flex items-center space-x-2">
             <BarChart3 className="h-4 w-4" />
-            <span>Summary</span>
+            <span>{t('reports.tabs.summary')}</span>
           </TabsTrigger>
           <TabsTrigger value="orders" className="flex items-center space-x-2">
             <FileText className="h-4 w-4" />
-            <span>Orders</span>
+            <span>{t('reports.tabs.orders')}</span>
           </TabsTrigger>
           <TabsTrigger value="payments" className="flex items-center space-x-2">
             <CreditCard className="h-4 w-4" />
-            <span>Payments</span>
+            <span>{t('reports.tabs.payments')}</span>
           </TabsTrigger>
           <TabsTrigger value="installments" className="flex items-center space-x-2">
             <Calendar className="h-4 w-4" />
-            <span>Installments</span>
+            <span>{t('reports.tabs.installments')}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -215,7 +203,7 @@ const ReportsShadcn = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Filter className="h-4 w-4" />
-                  <CardTitle className="text-lg">Advanced Filters</CardTitle>
+                  <CardTitle className="text-lg">{t('reports.filters.title')}</CardTitle>
                 </div>
                 <Button
                   variant="ghost"
@@ -230,7 +218,7 @@ const ReportsShadcn = () => {
               <CardContent>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
                   <div className="space-y-2">
-                    <Label htmlFor="start-date">Start Date</Label>
+                    <Label htmlFor="start-date">{t('reports.filters.start_date')}</Label>
                     <Input
                       id="start-date"
                       type="date"
@@ -239,7 +227,7 @@ const ReportsShadcn = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="end-date">End Date</Label>
+                    <Label htmlFor="end-date">{t('reports.filters.end_date')}</Label>
                     <Input
                       id="end-date"
                       type="date"
@@ -248,12 +236,12 @@ const ReportsShadcn = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="customer">Customer</Label>
+                    <Label htmlFor="customer">{t('reports.filters.customer')}</Label>
                     <Select
                       value={selectedCustomer}
                       onChange={(e) => setSelectedCustomer(e.target.value)}
                     >
-                      <option value="">All Customers</option>
+                      <option value="">{t('reports.filters.all_customers')}</option>
                       {customers.map((customer) => (
                         <option key={customer.id} value={customer.id}>
                           {customer.full_name}
@@ -262,12 +250,12 @@ const ReportsShadcn = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="product">Product</Label>
+                    <Label htmlFor="product">{t('reports.filters.product')}</Label>
                     <Select
                       value={selectedProduct}
                       onChange={(e) => setSelectedProduct(e.target.value)}
                     >
-                      <option value="">All Products</option>
+                      <option value="">{t('reports.filters.all_products')}</option>
                       {products.map((product) => (
                         <option key={product.id} value={product.id}>
                           {product.name}
@@ -276,16 +264,16 @@ const ReportsShadcn = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
+                    <Label htmlFor="status">{t('reports.filters.status')}</Label>
                     <Select
                       value={selectedStatus}
                       onChange={(e) => setSelectedStatus(e.target.value)}
                     >
-                      <option value="">All Statuses</option>
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="active">Active</option>
-                      <option value="completed">Completed</option>
+                      <option value="">{t('reports.filters.all_statuses')}</option>
+                      <option value="pending">{t('orders.pending')}</option>
+                      <option value="approved">{t('orders.approved')}</option>
+                      <option value="active">{t('orders.active')}</option>
+                      <option value="completed">{t('orders.completed')}</option>
                     </Select>
                   </div>
                 </div>
@@ -299,49 +287,49 @@ const ReportsShadcn = () => {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('reports.metrics.total_orders')}</CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatNumber(summary.orders?.total || 0)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summary.orders?.active || 0} active orders
+                  {summary.orders?.active || 0} {t('reports.metrics.active_orders')}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('reports.metrics.total_revenue')}</CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(summary.revenue?.total || 0)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(summary.revenue?.last_30_days || 0)} last 30 days
+                  {formatCurrency(summary.revenue?.last_30_days || 0)} {t('reports.metrics.last_30_days')}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Outstanding Balance</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('reports.metrics.outstanding_balance')}</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(summary.revenue?.outstanding || 0)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summary.installments?.overdue || 0} overdue payments
+                  {summary.installments?.overdue || 0} {t('reports.metrics.overdue_payments')}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+                <CardTitle className="text-sm font-medium">{t('reports.metrics.total_customers')}</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatNumber(summary.customers?.total || 0)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summary.customers?.active || 0} active customers
+                  {summary.customers?.active || 0} {t('reports.metrics.active_customers')}
                 </p>
               </CardContent>
             </Card>
@@ -352,18 +340,18 @@ const ReportsShadcn = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Revenue Trends</CardTitle>
-                  <CardDescription>Last 12 months revenue performance</CardDescription>
+                  <CardTitle>{t('reports.charts.revenue_trends')}</CardTitle>
+                  <CardDescription>{t('reports.charts.revenue_description')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px] flex items-center justify-center">
                     <div className="text-center space-y-2">
                       <TrendingUp className="h-12 w-12 mx-auto text-primary" />
                       <p className="text-sm text-muted-foreground">
-                        Revenue: {formatCurrency(chartData.revenue.reduce((a, b) => a + b, 0))}
+                        {t('reports.charts.revenue')}: {formatCurrency(chartData.revenue.reduce((a, b) => a + b, 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {chartData.revenue.length} months of data
+                        {chartData.revenue.length} {t('reports.charts.months_of_data')}
                       </p>
                     </div>
                   </div>
@@ -371,18 +359,18 @@ const ReportsShadcn = () => {
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle>Orders Trends</CardTitle>
-                  <CardDescription>Last 12 months order volume</CardDescription>
+                  <CardTitle>{t('reports.charts.orders_trends')}</CardTitle>
+                  <CardDescription>{t('reports.charts.orders_description')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px] flex items-center justify-center">
                     <div className="text-center space-y-2">
                       <BarChart3 className="h-12 w-12 mx-auto text-primary" />
                       <p className="text-sm text-muted-foreground">
-                        Total Orders: {chartData.orders.reduce((a, b) => a + b, 0)}
+                        {t('reports.charts.total_orders')}: {chartData.orders.reduce((a, b) => a + b, 0)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {chartData.orders.length} months of data
+                        {chartData.orders.length} {t('reports.charts.months_of_data')}
                       </p>
                     </div>
                   </div>
@@ -395,16 +383,16 @@ const ReportsShadcn = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Top Performing Products</CardTitle>
-                <CardDescription>Products ranked by revenue</CardDescription>
+                <CardTitle>{t('reports.tables.top_products')}</CardTitle>
+                <CardDescription>{t('reports.tables.top_products_description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Orders</TableHead>
-                      <TableHead>Revenue</TableHead>
+                      <TableHead>{t('reports.tables.product')}</TableHead>
+                      <TableHead>{t('reports.tables.orders')}</TableHead>
+                      <TableHead>{t('reports.tables.revenue')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -425,16 +413,16 @@ const ReportsShadcn = () => {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>Breakdown by payment type</CardDescription>
+                <CardTitle>{t('reports.tables.payment_methods')}</CardTitle>
+                <CardDescription>{t('reports.tables.payment_methods_description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Count</TableHead>
-                      <TableHead>Total</TableHead>
+                      <TableHead>{t('reports.tables.method')}</TableHead>
+                      <TableHead>{t('reports.tables.count')}</TableHead>
+                      <TableHead>{t('reports.tables.total')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -462,8 +450,8 @@ const ReportsShadcn = () => {
         <TabsContent value="orders" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Orders Report</CardTitle>
-              <CardDescription>Detailed order information</CardDescription>
+              <CardTitle>{t('reports.detailed_reports.orders.title')}</CardTitle>
+              <CardDescription>{t('reports.detailed_reports.orders.description')}</CardDescription>
             </CardHeader>
             <CardContent>
               {detailedLoading ? (
@@ -474,12 +462,12 @@ const ReportsShadcn = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Total Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Order Date</TableHead>
+                      <TableHead>{t('reports.detailed_reports.orders.order_id')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.orders.customer')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.orders.product')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.orders.total_amount')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.orders.status')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.orders.order_date')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -495,7 +483,7 @@ const ReportsShadcn = () => {
                             order.status === 'active' ? 'secondary' :
                             'outline'
                           }>
-                            {order.status}
+                            {t(`orders.${order.status}`, order.status)}
                           </Badge>
                         </TableCell>
                         <TableCell>{formatDate(order.order_date)}</TableCell>
@@ -511,8 +499,8 @@ const ReportsShadcn = () => {
         <TabsContent value="payments" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Payments Report</CardTitle>
-              <CardDescription>Payment transaction details</CardDescription>
+              <CardTitle>{t('reports.detailed_reports.payments.title')}</CardTitle>
+              <CardDescription>{t('reports.detailed_reports.payments.description')}</CardDescription>
             </CardHeader>
             <CardContent>
               {detailedLoading ? (
@@ -523,12 +511,12 @@ const ReportsShadcn = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Payment ID</TableHead>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>{t('reports.detailed_reports.payments.payment_id')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.payments.order_id')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.payments.customer')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.payments.amount')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.payments.method')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.payments.date')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -558,8 +546,8 @@ const ReportsShadcn = () => {
         <TabsContent value="installments" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Installments Report</CardTitle>
-              <CardDescription>Installment schedule and status</CardDescription>
+              <CardTitle>{t('reports.detailed_reports.installments.title')}</CardTitle>
+              <CardDescription>{t('reports.detailed_reports.installments.description')}</CardDescription>
             </CardHeader>
             <CardContent>
               {detailedLoading ? (
@@ -570,12 +558,12 @@ const ReportsShadcn = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Installment</TableHead>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t('reports.detailed_reports.installments.installment')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.installments.order_id')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.installments.customer')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.installments.amount')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.installments.due_date')}</TableHead>
+                      <TableHead>{t('reports.detailed_reports.installments.status')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -596,7 +584,7 @@ const ReportsShadcn = () => {
                             installment.status === 'overdue' ? 'destructive' :
                             'secondary'
                           }>
-                            {installment.status}
+                            {t(`orders.${installment.status}`, installment.status)}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -612,4 +600,4 @@ const ReportsShadcn = () => {
   );
 };
 
-export default ReportsShadcn;
+export default ReportsShadcn; 

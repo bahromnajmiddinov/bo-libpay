@@ -11,34 +11,38 @@ import { Select } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Table as TableIcon, Grid, Calendar, DollarSign, User, Package, CreditCard, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // View toggle component
-const ViewToggle = ({ view, onChange }) => (
-  <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
-    <button
-      onClick={() => onChange('table')}
-      className={`p-2 rounded-md transition-colors ${
-        view === 'table' 
-          ? 'bg-white shadow-sm border' 
-          : 'hover:bg-gray-100'
-      }`}
-      title="Table View"
-    >
-      <TableIcon size={18} />
-    </button>
-    <button
-      onClick={() => onChange('card')}
-      className={`p-2 rounded-md transition-colors ${
-        view === 'card' 
-          ? 'bg-white shadow-sm border' 
-          : 'hover:bg-gray-100'
-      }`}
-      title="Card View"
-    >
-      <Grid size={18} />
-    </button>
-  </div>
-);
+const ViewToggle = ({ view, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center space-x-1 border rounded-lg p-1 bg-gray-50">
+      <button
+        onClick={() => onChange('table')}
+        className={`p-2 rounded-md transition-colors ${
+          view === 'table' 
+            ? 'bg-white shadow-sm border' 
+            : 'hover:bg-gray-100'
+        }`}
+        title={t('orders.table_view', 'Table View')}
+      >
+        <TableIcon size={18} />
+      </button>
+      <button
+        onClick={() => onChange('card')}
+        className={`p-2 rounded-md transition-colors ${
+          view === 'card' 
+            ? 'bg-white shadow-sm border' 
+            : 'hover:bg-gray-100'
+        }`}
+        title={t('orders.card_view', 'Card View')}
+      >
+        <Grid size={18} />
+      </button>
+    </div>
+  );
+};
 
 const Orders = () => {
   const [showModal, setShowModal] = useState(false);
@@ -59,6 +63,7 @@ const Orders = () => {
   const [viewMode, setViewMode] = useState('table');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   // Fetch orders
   const { data: ordersData, isLoading } = useQuery(
@@ -187,12 +192,12 @@ const Orders = () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
       queryClient.invalidateQueries('dueInstallments');
-      toast.success('Order created successfully!');
+      toast.success(t('orders.order_created', 'Order created successfully!'));
       setShowModal(false);
       resetForm();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to create order');
+      toast.error(error.response?.data?.error || t('orders.create_failed', 'Failed to create order'));
     },
   });
 
@@ -203,13 +208,13 @@ const Orders = () => {
         queryClient.invalidateQueries('orders');
         queryClient.invalidateQueries('dashboardStats');
         queryClient.invalidateQueries('dueInstallments');
-        toast.success('Order updated successfully!');
+        toast.success(t('orders.order_updated', 'Order updated successfully!'));
         setShowModal(false);
         setEditingOrder(null);
         resetForm();
       },
       onError: (error) => {
-        toast.error(error.response?.data?.error || 'Failed to update order');
+        toast.error(error.response?.data?.error || t('orders.update_failed', 'Failed to update order'));
       },
     }
   );
@@ -219,10 +224,10 @@ const Orders = () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
       queryClient.invalidateQueries('dueInstallments');
-      toast.success('Order approved successfully!');
+      toast.success(t('orders.order_approved', 'Order approved successfully!'));
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to approve order');
+      toast.error(error.response?.data?.error || t('orders.approve_failed', 'Failed to approve order'));
     },
   });
 
@@ -231,10 +236,10 @@ const Orders = () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
       queryClient.invalidateQueries('dueInstallments');
-      toast.success('Order deleted successfully!');
+      toast.success(t('orders.order_deleted', 'Order deleted successfully!'));
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to delete order');
+      toast.error(error.response?.data?.error || t('orders.delete_failed', 'Failed to delete order'));
     },
   });
 
@@ -243,12 +248,12 @@ const Orders = () => {
       queryClient.invalidateQueries('orders');
       queryClient.invalidateQueries('dashboardStats');
       queryClient.invalidateQueries('dueInstallments');
-      toast.success('Payment recorded successfully!');
+      toast.success(t('orders.payment_recorded', 'Payment recorded successfully!'));
       setShowPaymentModal(false);
       resetPaymentForm();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.error || 'Failed to record payment');
+      toast.error(error.response?.data?.error || t('orders.payment_failed', 'Failed to record payment'));
     },
   });
 
@@ -374,13 +379,13 @@ const Orders = () => {
   };
 
   const handleApprove = (order) => {
-    if (window.confirm(`Are you sure you want to approve Order #${order.id}?`)) {
+    if (window.confirm(t('orders.approve_confirm', `Are you sure you want to approve Order #${order.id}?`))) {
       approveOrderMutation.mutate(order.id);
     }
   };
 
   const handleDelete = (order) => {
-    if (window.confirm(`Are you sure you want to delete Order #${order.id}?`)) {
+    if (window.confirm(t('orders.delete_confirm', `Are you sure you want to delete Order #${order.id}?`))) {
       deleteOrderMutation.mutate(order.id);
     }
   };
@@ -407,15 +412,15 @@ const Orders = () => {
 
   const handleExport = (format) => {
     const dataToExport = filteredAndSortedOrders.map(order => ({
-      'Order ID': order.id,
-      'Customer': order.customer?.full_name || 'N/A',
-      'Product': order.product?.name || 'N/A',
-      'Total Amount': order.total_amount,
-      'Down Payment': order.down_payment,
-      'Status': order.status,
-      'Installments': order.installment_count,
-      'Order Date': order.order_date ? new Date(order.order_date).toLocaleDateString() : 'N/A',
-      'Approved Date': order.approved_date ? new Date(order.approved_date).toLocaleDateString() : 'N/A'
+      [t('orders.order_id')]: order.id,
+      [t('orders.customer')]: order.customer?.full_name || t('orders.na'),
+      [t('orders.product')]: order.product?.name || t('orders.na'),
+      [t('orders.total_amount')]: order.total_amount,
+      [t('orders.down_payment')]: order.down_payment,
+      [t('orders.status')]: order.status,
+      [t('orders.installments')]: order.installment_count,
+      [t('orders.order_date')]: order.order_date ? new Date(order.order_date).toLocaleDateString() : t('orders.na'),
+      [t('orders.approved_date')]: order.approved_date ? new Date(order.approved_date).toLocaleDateString() : t('orders.na')
     }));
 
     if (format === 'csv') {
@@ -442,7 +447,7 @@ const Orders = () => {
       window.URL.revokeObjectURL(url);
     }
     
-    toast.success(`Orders exported as ${format.toUpperCase()} successfully!`);
+    toast.success(t('orders.export_success', `Orders exported as ${format.toUpperCase()} successfully!`));
   };
 
   const clearFilters = () => {
@@ -482,7 +487,7 @@ const Orders = () => {
               {/* Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold text-lg">Order #{order.id}</h3>
+                  <h3 className="font-semibold text-lg">{t('orders.order_id')} #{order.id}</h3>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(order.order_date)}
                   </p>
@@ -493,7 +498,7 @@ const Orders = () => {
                   order.status === 'approved' ? "outline" :
                   "destructive"
                 }>
-                  {order.status}
+                  {t(`orders.${order.status}`, order.status)}
                 </Badge>
               </div>
 
@@ -514,13 +519,13 @@ const Orders = () => {
               {/* Financial Info */}
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Total:</span>
+                  <span className="text-muted-foreground">{t('orders.total_amount')}:</span>
                   <div className="font-semibold text-green-600">
                     {formatCurrency(order.total_amount)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Down Payment:</span>
+                  <span className="text-muted-foreground">{t('orders.down_payment')}:</span>
                   <div className="font-medium">
                     {formatCurrency(order.down_payment)}
                   </div>
@@ -531,7 +536,7 @@ const Orders = () => {
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center space-x-1">
                   <Calendar size={14} className="text-muted-foreground" />
-                  <span>{order.installment_count} months</span>
+                  <span>{order.installment_count} {t('products.months')}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <DollarSign size={14} className="text-muted-foreground" />
@@ -548,7 +553,7 @@ const Orders = () => {
                   size="sm"
                   onClick={() => handleViewDetails(order)}
                 >
-                  Details
+                  {t('orders.details')}
                 </Button>
                 {order.status === 'pending' && (
                   <Button
@@ -556,7 +561,7 @@ const Orders = () => {
                     size="sm"
                     onClick={() => handleApprove(order)}
                   >
-                    Approve
+                    {t('orders.approve')}
                   </Button>
                 )}
                 <Button
@@ -564,21 +569,21 @@ const Orders = () => {
                   size="sm"
                   onClick={() => handleRecordPayment(order)}
                 >
-                  Payment
+                  {t('orders.payment')}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleEdit(order)}
                 >
-                  Edit
+                  {t('orders.edit')}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleDelete(order)}
                 >
-                  Delete
+                  {t('orders.delete')}
                 </Button>
               </div>
             </div>
@@ -591,7 +596,7 @@ const Orders = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-lg">Loading orders...</div>
+        <div className="text-lg">{t('loading', 'Loading orders...')}</div>
       </div>
     );
   }
@@ -601,9 +606,9 @@ const Orders = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Orders Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('orders.title')}</h1>
           <p className="text-muted-foreground">
-            Manage orders, payments, and installment tracking with advanced analytics
+            {t('orders.description')}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -615,7 +620,7 @@ const Orders = () => {
               setShowModal(true);
             }}
           >
-            Create Order
+            {t('orders.create_order')}
           </Button>
         </div>
       </div>
@@ -627,7 +632,7 @@ const Orders = () => {
           className="w-full justify-between"
           onClick={() => setShowMobileFilters(!showMobileFilters)}
         >
-          <span>Filters & Search</span>
+          <span>{t('orders.filters_search')}</span>
           <span>{showMobileFilters ? '▲' : '▼'}</span>
         </Button>
       </div>
@@ -635,41 +640,41 @@ const Orders = () => {
       {/* Filters */}
       <Card className={`${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
         <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
+          <CardTitle>{t('orders.filters_search')}</CardTitle>
           <CardDescription>
-            Filter and search your orders
+            {t('orders.filters_description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
+              <label className="text-sm font-medium">{t('orders.search', 'Search')}</label>
               <Input
-                placeholder="Search by customer, product or order ID..."
+                placeholder={t('orders.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{t('orders.status')}</label>
               <Select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               >
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
+                <option value="">{t('orders.all_status')}</option>
+                <option value="pending">{t('orders.pending')}</option>
+                <option value="approved">{t('orders.approved')}</option>
+                <option value="active">{t('orders.active')}</option>
+                <option value="completed">{t('orders.completed')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Customer</label>
+              <label className="text-sm font-medium">{t('orders.customer')}</label>
               <Select
                 value={customerFilter}
                 onChange={(e) => { setCustomerFilter(e.target.value); setPage(1); }}
               >
-                <option value="">All Customers</option>
+                <option value="">{t('orders.all_customers')}</option>
                 {customers.map((customer) => (
                   <option key={customer.id} value={customer.id}>
                     {customer.full_name}
@@ -678,12 +683,12 @@ const Orders = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Product</label>
+              <label className="text-sm font-medium">{t('orders.product')}</label>
               <Select
                 value={productFilter}
                 onChange={(e) => { setProductFilter(e.target.value); setPage(1); }}
               >
-                <option value="">All Products</option>
+                <option value="">{t('orders.all_products')}</option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name}
@@ -695,7 +700,7 @@ const Orders = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
+              <label className="text-sm font-medium">{t('orders.start_date')}</label>
               <Input
                 type="date"
                 value={dateRange.start}
@@ -703,7 +708,7 @@ const Orders = () => {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">End Date</label>
+              <label className="text-sm font-medium">{t('orders.end_date')}</label>
               <Input
                 type="date"
                 value={dateRange.end}
@@ -711,39 +716,39 @@ const Orders = () => {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium">{t('orders.sort_by')}</label>
               <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="order_date">Order Date</option>
-                <option value="total_amount">Amount</option>
-                <option value="customer">Customer</option>
-                <option value="product">Product</option>
-                <option value="status">Status</option>
+                <option value="order_date">{t('orders.order_date')}</option>
+                <option value="total_amount">{t('orders.total_amount')}</option>
+                <option value="customer">{t('orders.customer')}</option>
+                <option value="product">{t('orders.product')}</option>
+                <option value="status">{t('orders.status')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Order</label>
+              <label className="text-sm font-medium">{t('orders.order')}</label>
               <Select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
               >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
+                <option value="desc">{t('orders.newest_first')}</option>
+                <option value="asc">{t('orders.oldest_first')}</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Actions</label>
+              <label className="text-sm font-medium">{t('orders.actions')}</label>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear
+                  {t('orders.clear')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
-                  Export CSV
+                  {t('orders.export_csv')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
-                  Export JSON
+                  {t('orders.export_json')}
                 </Button>
               </div>
             </div>
@@ -751,17 +756,17 @@ const Orders = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount Range</label>
+              <label className="text-sm font-medium">{t('orders.amount_range')}</label>
               <div className="flex space-x-2">
                 <Input
                   type="number"
-                  placeholder="Min amount"
+                  placeholder={t('orders.min_amount')}
                   value={amountRange.min}
                   onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
                 />
                 <Input
                   type="number"
-                  placeholder="Max amount"
+                  placeholder={t('orders.max_amount')}
                   value={amountRange.max}
                   onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
                 />
@@ -771,11 +776,11 @@ const Orders = () => {
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <Badge variant="secondary">
-              {filteredAndSortedOrders.length} orders found
+              {t('orders.orders_found', { count: filteredAndSortedOrders.length })}
             </Badge>
             <div className="text-sm text-muted-foreground lg:hidden">
               <Button variant="ghost" size="sm" onClick={() => setShowMobileFilters(false)}>
-                Close Filters
+                {t('orders.close_filters')}
               </Button>
             </div>
           </div>
@@ -792,10 +797,10 @@ const Orders = () => {
                   <Package className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('orders.total_orders')}</p>
                   <p className="text-2xl font-bold">{stats.orders?.total || 0}</p>
                   <p className="text-xs text-muted-foreground">
-                    {stats.orders?.active || 0} Active Orders
+                    {stats.orders?.active || 0} {t('orders.active_orders')}
                   </p>
                 </div>
               </div>
@@ -808,10 +813,10 @@ const Orders = () => {
                   <Calendar className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending Orders</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('orders.pending_orders')}</p>
                   <p className="text-2xl font-bold">{stats.orders?.pending || 0}</p>
                   <p className="text-xs text-muted-foreground">
-                    Requires approval
+                    {t('orders.requires_approval')}
                   </p>
                 </div>
               </div>
@@ -824,10 +829,10 @@ const Orders = () => {
                   <User className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Orders</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('orders.active_orders')}</p>
                   <p className="text-2xl font-bold">{stats.orders?.active || 0}</p>
                   <p className="text-xs text-muted-foreground">
-                    In progress
+                    {t('orders.in_progress')}
                   </p>
                 </div>
               </div>
@@ -840,10 +845,10 @@ const Orders = () => {
                   <DollarSign className="h-6 w-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('orders.total_revenue')}</p>
                   <p className="text-2xl font-bold">{formatCurrency(stats.payments?.total_revenue || 0)}</p>
                   <p className="text-xs text-muted-foreground">
-                    All time earnings
+                    {t('orders.all_time_earnings')}
                   </p>
                 </div>
               </div>
@@ -861,16 +866,16 @@ const Orders = () => {
                 <span className="text-yellow-600">⚠️</span>
               </div>
               <div>
-                <h4 className="font-semibold">Payment Alerts</h4>
+                <h4 className="font-semibold">{t('orders.payment_alerts')}</h4>
                 <div className="text-sm">
                   {dueData.due_today?.length > 0 && (
                     <p>
-                      <strong>{dueData.due_today.length}</strong> payments due today
+                      <strong>{dueData.due_today.length}</strong> {t('orders.due_today', { count: dueData.due_today.length })}
                     </p>
                   )}
                   {dueData.overdue?.length > 0 && (
                     <p>
-                      <strong>{dueData.overdue.length}</strong> overdue payments
+                      <strong>{dueData.overdue.length}</strong> {t('orders.overdue_payments', { count: dueData.overdue.length })}
                     </p>
                   )}
                 </div>
@@ -886,18 +891,18 @@ const Orders = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle>
-                {viewMode === 'table' ? 'Orders List' : 'Orders Grid'}
+                {viewMode === 'table' ? t('orders.orders_list') : t('orders.orders_grid')}
               </CardTitle>
               <CardDescription>
                 {viewMode === 'table' 
-                  ? 'Manage your orders in table view' 
-                  : 'Manage your orders in card view'
+                  ? t('orders.table_view_description') 
+                  : t('orders.card_view_description')
                 }
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground hidden sm:block">
-                View:
+                {t('orders.view', 'View')}:
               </span>
               <ViewToggle view={viewMode} onChange={setViewMode} />
             </div>
@@ -911,15 +916,15 @@ const Orders = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        <TableHead>Down Payment</TableHead>
-                        <TableHead>Installments</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Order Date</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>{t('orders.order_id')}</TableHead>
+                        <TableHead>{t('orders.customer')}</TableHead>
+                        <TableHead>{t('orders.product')}</TableHead>
+                        <TableHead>{t('orders.total_amount')}</TableHead>
+                        <TableHead>{t('orders.down_payment')}</TableHead>
+                        <TableHead>{t('orders.installments')}</TableHead>
+                        <TableHead>{t('orders.status')}</TableHead>
+                        <TableHead>{t('orders.order_date')}</TableHead>
+                        <TableHead>{t('orders.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -935,7 +940,7 @@ const Orders = () => {
                             <div>
                               <div className="font-medium">{order.product?.name}</div>
                               <div className="text-sm text-muted-foreground">
-                                Qty: {order.quantity}
+                                {t('orders.quantity')}: {order.quantity}
                               </div>
                             </div>
                           </TableCell>
@@ -947,7 +952,7 @@ const Orders = () => {
                           <TableCell>{formatCurrency(order.down_payment)}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {order.installment_count} months
+                              {order.installment_count} {t('products.months')}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -957,7 +962,7 @@ const Orders = () => {
                               order.status === 'approved' ? "outline" :
                               "destructive"
                             }>
-                              {order.status}
+                              {t(`orders.${order.status}`, order.status)}
                             </Badge>
                           </TableCell>
                           <TableCell>{formatDate(order.order_date)}</TableCell>
@@ -968,7 +973,7 @@ const Orders = () => {
                                 size="sm"
                                 onClick={() => handleViewDetails(order)}
                               >
-                                Details
+                                {t('orders.details')}
                               </Button>
                               {order.status === 'pending' && (
                                 <Button
@@ -976,7 +981,7 @@ const Orders = () => {
                                   size="sm"
                                   onClick={() => handleApprove(order)}
                                 >
-                                  Approve
+                                  {t('orders.approve')}
                                 </Button>
                               )}
                               <Button
@@ -984,7 +989,7 @@ const Orders = () => {
                                 size="sm"
                                 onClick={() => handleRecordPayment(order)}
                               >
-                                Payment
+                                {t('orders.payment')}
                               </Button>
                             </div>
                           </TableCell>
@@ -1000,9 +1005,9 @@ const Orders = () => {
           ) : (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">📋</div>
-              <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('orders.no_orders_found')}</h3>
               <p className="text-muted-foreground">
-                No orders match your current filters. Try adjusting your search criteria.
+                {t('orders.no_orders_description')}
               </p>
             </div>
           )}
@@ -1013,10 +1018,14 @@ const Orders = () => {
           <div className="flex flex-col sm:flex-row items-center justify-between p-6 pt-0 gap-4">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-muted-foreground">
-                Showing {Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1)} - {Math.min(filteredAndSortedOrders.length, page * pageSize)} of {filteredAndSortedOrders.length} orders
+                {t('orders.showing', { 
+                  from: Math.min(filteredAndSortedOrders.length, (page - 1) * pageSize + 1), 
+                  to: Math.min(filteredAndSortedOrders.length, page * pageSize), 
+                  total: filteredAndSortedOrders.length 
+                })}
               </span>
               <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium">Show:</label>
+                <label className="text-sm font-medium">{t('orders.show')}:</label>
                 <Select
                   value={pageSize.toString()}
                   onChange={(e) => { setPageSize(parseInt(e.target.value)); setPage(1); }}
@@ -1035,10 +1044,10 @@ const Orders = () => {
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
               >
-                Previous
+                {t('orders.previous')}
               </Button>
               <Button variant="outline" size="sm" disabled>
-                Page {page} of {totalPages}
+                {t('orders.page')} {page} {t('orders.of')} {totalPages}
               </Button>
               <Button
                 variant="outline"
@@ -1046,7 +1055,7 @@ const Orders = () => {
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page === totalPages}
               >
-                Next
+                {t('orders.next')}
               </Button>
             </div>
           </div>
@@ -1065,7 +1074,7 @@ const Orders = () => {
           >
             <div className="flex items-center justify-between p-6 border-b">
               <h5 className="text-xl font-semibold">
-                {editingOrder ? 'Edit Order' : 'Create New Order'}
+                {editingOrder ? t('orders.edit_order') : t('orders.create_new_order')}
               </h5>
               <button
                 type="button"
@@ -1080,7 +1089,7 @@ const Orders = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Customer</label>
+                      <label className="block text-sm font-medium">{t('orders.customer')}</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="customer"
@@ -1088,7 +1097,7 @@ const Orders = () => {
                         onChange={handleInputChange}
                         required
                       >
-                        <option value="">Select Customer</option>
+                        <option value="">{t('orders.select_customer')}</option>
                         {customers.map((customer) => (
                           <option key={customer.id} value={customer.id}>
                             {customer.full_name}
@@ -1097,7 +1106,7 @@ const Orders = () => {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Product</label>
+                      <label className="block text-sm font-medium">{t('orders.product')}</label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         name="product"
@@ -1105,7 +1114,7 @@ const Orders = () => {
                         onChange={handleProductChange}
                         required
                       >
-                        <option value="">Select Product</option>
+                        <option value="">{t('orders.select_product')}</option>
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
                             {product.name} - {formatCurrency(product.price)}
@@ -1117,7 +1126,7 @@ const Orders = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Quantity</label>
+                      <label className="block text-sm font-medium">{t('orders.quantity')}</label>
                       <input
                         type="number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1129,7 +1138,7 @@ const Orders = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Total Amount ($)</label>
+                      <label className="block text-sm font-medium">{t('orders.total_amount_label')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -1141,7 +1150,7 @@ const Orders = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Down Payment ($)</label>
+                      <label className="block text-sm font-medium">{t('orders.down_payment_label')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -1156,7 +1165,7 @@ const Orders = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Installment Count (months)</label>
+                      <label className="block text-sm font-medium">{t('orders.installment_count')}</label>
                       <input
                         type="number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1169,7 +1178,7 @@ const Orders = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium">Monthly Payment</label>
+                      <label className="block text-sm font-medium">{t('orders.monthly_payment')}</label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
@@ -1183,7 +1192,7 @@ const Orders = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Notes</label>
+                    <label className="block text-sm font-medium">{t('orders.notes')}</label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       name="notes"
@@ -1200,7 +1209,7 @@ const Orders = () => {
                   onClick={() => setShowModal(false)}
                   disabled={createOrderMutation.isLoading || updateOrderMutation.isLoading}
                 >
-                  Cancel
+                  {t('orders.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -1212,10 +1221,10 @@ const Orders = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      {editingOrder ? 'Updating...' : 'Creating...'}
+                      {editingOrder ? t('orders.updating') : t('orders.creating')}
                     </span>
                   ) : (
-                    editingOrder ? 'Update Order' : 'Create Order'
+                    editingOrder ? t('orders.update_order') : t('orders.create_order_button')
                   )}
                 </Button>
               </div>
@@ -1235,7 +1244,7 @@ const Orders = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b">
-              <h5 className="text-xl font-semibold">Order Details - #{selectedOrder.id}</h5>
+              <h5 className="text-xl font-semibold">{t('orders.order_details', { id: selectedOrder.id })}</h5>
               <button
                 type="button"
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -1249,30 +1258,30 @@ const Orders = () => {
                 <div>
                   <h6 className="font-semibold mb-3 flex items-center">
                     <User className="w-4 h-4 mr-2" />
-                    Customer Information
+                    {t('orders.customer_information')}
                   </h6>
                   <div className="space-y-2">
-                    <p><strong>Name:</strong> {selectedOrder.customer?.full_name}</p>
-                    <p><strong>Email:</strong> {selectedOrder.customer?.email || 'N/A'}</p>
-                    <p><strong>Phone:</strong> {selectedOrder.customer?.phone_number || 'N/A'}</p>
+                    <p><strong>{t('orders.name')}:</strong> {selectedOrder.customer?.full_name}</p>
+                    <p><strong>{t('orders.email')}:</strong> {selectedOrder.customer?.email || t('orders.na')}</p>
+                    <p><strong>{t('orders.phone')}:</strong> {selectedOrder.customer?.phone_number || t('orders.na')}</p>
                   </div>
                 </div>
                 <div>
                   <h6 className="font-semibold mb-3 flex items-center">
                     <Package className="w-4 h-4 mr-2" />
-                    Order Information
+                    {t('orders.order_information')}
                   </h6>
                   <div className="space-y-2">
-                    <p><strong>Product:</strong> {selectedOrder.product?.name}</p>
-                    <p><strong>Quantity:</strong> {selectedOrder.quantity}</p>
-                    <p><strong>Status:</strong> 
+                    <p><strong>{t('orders.product')}:</strong> {selectedOrder.product?.name}</p>
+                    <p><strong>{t('orders.quantity')}:</strong> {selectedOrder.quantity}</p>
+                    <p><strong>{t('orders.status')}:</strong> 
                       <Badge variant={
                         selectedOrder.status === 'completed' ? "default" :
                         selectedOrder.status === 'active' ? "secondary" :
                         selectedOrder.status === 'approved' ? "outline" :
                         "destructive"
                       } className="ml-2">
-                        {selectedOrder.status}
+                        {t(`orders.${selectedOrder.status}`, selectedOrder.status)}
                       </Badge>
                     </p>
                   </div>
@@ -1283,28 +1292,28 @@ const Orders = () => {
                 <div>
                   <h6 className="font-semibold mb-3 flex items-center">
                     <DollarSign className="w-4 h-4 mr-2" />
-                    Payment Information
+                    {t('orders.payment_information')}
                   </h6>
                   <div className="space-y-2">
-                    <p><strong>Total Amount:</strong> {formatCurrency(selectedOrder.total_amount)}</p>
-                    <p><strong>Down Payment:</strong> {formatCurrency(selectedOrder.down_payment)}</p>
-                    <p><strong>Monthly Payment:</strong> {formatCurrency(selectedOrder.monthly_payment || 0)}</p>
-                    <p><strong>Remaining Balance:</strong> {formatCurrency(selectedOrder.remaining_balance || 0)}</p>
+                    <p><strong>{t('orders.total_amount')}:</strong> {formatCurrency(selectedOrder.total_amount)}</p>
+                    <p><strong>{t('orders.down_payment')}:</strong> {formatCurrency(selectedOrder.down_payment)}</p>
+                    <p><strong>{t('orders.monthly_payment_label')}:</strong> {formatCurrency(selectedOrder.monthly_payment || 0)}</p>
+                    <p><strong>{t('orders.remaining_balance')}:</strong> {formatCurrency(selectedOrder.remaining_balance || 0)}</p>
                   </div>
                 </div>
                 <div>
                   <h6 className="font-semibold mb-3 flex items-center">
                     <Calendar className="w-4 h-4 mr-2" />
-                    Installment Plan
+                    {t('orders.installment_plan')}
                   </h6>
                   <div className="space-y-2">
-                    <p><strong>Installment Count:</strong> {selectedOrder.installment_count} months</p>
-                    <p><strong>Order Date:</strong> {formatDate(selectedOrder.order_date)}</p>
+                    <p><strong>{t('orders.installments')}:</strong> {selectedOrder.installment_count} {t('products.months')}</p>
+                    <p><strong>{t('orders.order_date')}:</strong> {formatDate(selectedOrder.order_date)}</p>
                     {selectedOrder.approved_date && (
-                      <p><strong>Approved Date:</strong> {formatDate(selectedOrder.approved_date)}</p>
+                      <p><strong>{t('orders.approved_date')}:</strong> {formatDate(selectedOrder.approved_date)}</p>
                     )}
                     {selectedOrder.start_date && (
-                      <p><strong>Start Date:</strong> {formatDate(selectedOrder.start_date)}</p>
+                      <p><strong>{t('orders.start_date_label')}:</strong> {formatDate(selectedOrder.start_date)}</p>
                     )}
                   </div>
                 </div>
@@ -1314,7 +1323,7 @@ const Orders = () => {
                 <div className="mt-6">
                   <h6 className="font-semibold mb-3 flex items-center">
                     <FileText className="w-4 h-4 mr-2" />
-                    Notes
+                    {t('orders.notes')}
                   </h6>
                   <p className="text-muted-foreground">{selectedOrder.notes}</p>
                 </div>
@@ -1322,15 +1331,15 @@ const Orders = () => {
 
               {selectedOrder.installments && selectedOrder.installments.length > 0 && (
                 <div className="mt-6">
-                  <h6 className="font-semibold mb-3">Installment Schedule</h6>
+                  <h6 className="font-semibold mb-3">{t('orders.installment_schedule')}</h6>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>#</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Due Date</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>{t('orders.installment_number')}</TableHead>
+                          <TableHead>{t('orders.total_amount')}</TableHead>
+                          <TableHead>{t('orders.due_date')}</TableHead>
+                          <TableHead>{t('orders.status')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1345,7 +1354,7 @@ const Orders = () => {
                                 installment.status === 'overdue' ? "destructive" :
                                 "outline"
                               }>
-                                {installment.status}
+                                {t(`orders.${installment.status}`, installment.status)}
                               </Badge>
                             </TableCell>
                           </TableRow>
@@ -1361,7 +1370,7 @@ const Orders = () => {
                 variant="outline"
                 onClick={() => setShowDetailsModal(false)}
               >
-                Close
+                {t('orders.close')}
               </Button>
             </div>
           </div>
@@ -1379,7 +1388,7 @@ const Orders = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b">
-              <h5 className="text-xl font-semibold">Record Payment - Order #{selectedOrder.id}</h5>
+              <h5 className="text-xl font-semibold">{t('orders.record_payment', { id: selectedOrder.id })}</h5>
               <button
                 type="button"
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -1392,7 +1401,7 @@ const Orders = () => {
               <div className="p-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Payment Amount ($)</label>
+                    <label className="block text-sm font-medium">{t('orders.payment_amount')}</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1405,7 +1414,7 @@ const Orders = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Payment Method</label>
+                    <label className="block text-sm font-medium">{t('orders.payment_method')}</label>
                     <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       name="payment_method"
@@ -1413,16 +1422,16 @@ const Orders = () => {
                       onChange={handlePaymentChange}
                       required
                     >
-                      <option value="cash">Cash</option>
-                      <option value="card">Credit/Debit Card</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="check">Check</option>
-                      <option value="other">Other</option>
+                      <option value="cash">{t('orders.cash')}</option>
+                      <option value="card">{t('orders.card')}</option>
+                      <option value="bank_transfer">{t('orders.bank_transfer')}</option>
+                      <option value="check">{t('orders.check')}</option>
+                      <option value="other">{t('orders.other')}</option>
                     </select>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Reference Number</label>
+                    <label className="block text-sm font-medium">{t('orders.reference_number')}</label>
                     <input
                       type="text"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1433,7 +1442,7 @@ const Orders = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">Notes</label>
+                    <label className="block text-sm font-medium">{t('orders.notes')}</label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       name="notes"
@@ -1450,7 +1459,7 @@ const Orders = () => {
                   onClick={() => setShowPaymentModal(false)}
                   disabled={createPaymentMutation.isLoading}
                 >
-                  Cancel
+                  {t('orders.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -1462,10 +1471,10 @@ const Orders = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Recording...
+                      {t('orders.recording')}
                     </span>
                   ) : (
-                    'Record Payment'
+                    t('orders.record_payment_button')
                   )}
                 </Button>
               </div>

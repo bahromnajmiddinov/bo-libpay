@@ -11,7 +11,7 @@ import Customers from './pages/Customers';
 import Orders from './pages/Orders';
 import Reports from './pages/ReportsShadcn';
 import CustomerPortal from './pages/CustomerPortal';
-
+import './i18n/i18n';
 function App() {
   return (
     <AuthProvider>

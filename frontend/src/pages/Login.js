@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -27,13 +29,13 @@ const Login = () => {
       const result = await login(formData.username, formData.password);
       
       if (result.success) {
-        toast.success('Login successful!');
+        toast.success(t('login.login_success'));
         navigate('/dashboard');
       } else {
         toast.error(result.error);
       }
     } catch (error) {
-      toast.error('An error occurred during login');
+      toast.error(t('login.login_error'));
     } finally {
       setLoading(false);
     }
@@ -45,12 +47,12 @@ const Login = () => {
         <div className="col-md-6 col-lg-4">
           <div className="card">
             <div className="card-body">
-              <h2 className="text-center mb-4">Login</h2>
+              <h2 className="text-center mb-4">{t('login.title')}</h2>
               
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label htmlFor="username" className="form-label">
-                    Username
+                    {t('login.username')}
                   </label>
                   <input
                     type="text"
@@ -65,7 +67,7 @@ const Login = () => {
 
                 <div className="form-group">
                   <label htmlFor="password" className="form-label">
-                    Password
+                    {t('login.password')}
                   </label>
                   <input
                     type="password"
@@ -83,24 +85,24 @@ const Login = () => {
                   className="btn btn-primary w-100"
                   disabled={loading}
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {loading ? t('login.loading') : t('login.button')}
                 </button>
               </form>
 
               <div className="text-center mt-3">
                 <p className="text-muted">
-                  Don't have an account?{' '}
+                  {t('login.no_account')}{' '}
                   <Link to="/register" className="text-decoration-none">
-                    Register here
+                    {t('login.register_here')}
                   </Link>
                 </p>
               </div>
 
               <div className="mt-4">
-                <h6>Demo Credentials:</h6>
+                <h6>{t('login.demo_title')}</h6>
                 <p className="small text-muted">
-                  Username: <strong>seller1</strong><br />
-                  Password: <strong>password123</strong>
+                  {t('login.demo_username')}: <strong>seller1</strong><br />
+                  {t('login.demo_password')}: <strong>password123</strong>
                 </p>
               </div>
             </div>
