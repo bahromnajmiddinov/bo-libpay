@@ -5,6 +5,7 @@ from decimal import Decimal
 from products.models import Product
 from customers.models import Customer
 from core.models import BaseModel
+from user.models import CustomUser
 
 
 class Order(BaseModel):
@@ -96,7 +97,7 @@ class Payment(BaseModel):
     payment_date = models.DateTimeField(default=timezone.now)
     reference_number = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey('user.CustomUser', on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"Payment - Order #{self.order.id} - ${self.amount}"
