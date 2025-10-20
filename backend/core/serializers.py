@@ -1,11 +1,11 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from user.models import CustomUser
 from .models import Seller
 
 
-class UserSerializer(serializers.ModelSerializer):
+class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = CustomUser
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         extra_kwargs = {
             'password': {'write_only': True}
@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class SellerSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = CustomUserSerializer()
     
     class Meta:
         model = Seller
@@ -22,7 +22,7 @@ class SellerSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user_data = validated_data.pop('user')
-        user = User.objects.create_user(**user_data)
+        user = CustomUser.objects.create_user(**user_data)
         seller = Seller.objects.create(user=user, **validated_data)
         return seller
 

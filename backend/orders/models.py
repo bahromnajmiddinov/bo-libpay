@@ -4,9 +4,10 @@ from django.utils import timezone
 from decimal import Decimal
 from products.models import Product
 from customers.models import Customer
+from core.models import BaseModel
 
 
-class Order(models.Model):
+class Order(BaseModel):
     """Model representing an order"""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -49,7 +50,7 @@ class Order(models.Model):
         ordering = ['-order_date']
 
 
-class Installment(models.Model):
+class Installment(BaseModel):
     """Model representing an installment"""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -78,7 +79,7 @@ class Installment(models.Model):
         unique_together = ['order', 'installment_number']
 
 
-class Payment(models.Model):
+class Payment(BaseModel):
     """Model representing a payment"""
     PAYMENT_METHOD_CHOICES = [
         ('cash', 'Cash'),
@@ -95,7 +96,7 @@ class Payment(models.Model):
     payment_date = models.DateTimeField(default=timezone.now)
     reference_number = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey('user.CustomUser', on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"Payment - Order #{self.order.id} - ${self.amount}"
@@ -112,7 +113,7 @@ class Payment(models.Model):
         ordering = ['-payment_date']
 
 
-class PaymentReminder(models.Model):
+class PaymentReminder(BaseModel):
     """Model representing payment reminders"""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -132,7 +133,6 @@ class PaymentReminder(models.Model):
     sent_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Reminder - {self.installment} - {self.reminder_type}"

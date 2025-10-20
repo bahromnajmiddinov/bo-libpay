@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from user.models import CustomUser
 from .models import Seller
 from .serializers import SellerSerializer
 
@@ -29,13 +30,27 @@ class SellerDetailView(generics.RetrieveUpdateDestroyAPIView):
 @permission_classes([AllowAny])
 def register_seller(request):
     """Register a new seller"""
+    print(request.data)
+    password = request.data['user'].pop('password')
     serializer = SellerSerializer(data=request.data)
     if serializer.is_valid():
-        seller = serializer.save()
-        
+        # Create user
+        user_data = serializer.validated_data.pop('user')
+        user = CustomUser.objects.create_user(**user_data)
+        user.set_password(password)
+        user.save()
+
+        # Create organization owned by this user
+        org_name = serializer.validated_data.get('business_name') or user.username
+        from user.models import Organization
+        org = Organization.objects.create(name=org_name, owner=user)
+
+        # Create seller with organization
+        seller = Seller.objects.create(user=user, organization=org, **serializer.validated_data)
+
         # Generate JWT tokens
         refresh = RefreshToken.for_user(seller.user)
-        
+
         return Response({
             'seller': SellerSerializer(seller).data,
             'tokens': {
@@ -43,7 +58,7 @@ def register_seller(request):
                 'access': str(refresh.access_token),
             }
         }, status=status.HTTP_201_CREATED)
-    
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

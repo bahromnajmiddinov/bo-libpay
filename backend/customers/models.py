@@ -1,18 +1,17 @@
 from django.db import models
-from django.contrib.auth.models import User
+from user.models import CustomUser
 
+from core.models import BaseModel
 
-class Customer(models.Model):
+class Customer(BaseModel):
     """Model representing a customer"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField()
     phone_number = models.CharField(max_length=20)
     address = models.TextField()
     date_of_birth = models.DateField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     @property
     def full_name(self):
@@ -23,3 +22,5 @@ class Customer(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = "Customer"
+        verbose_name_plural = "Customers"

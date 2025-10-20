@@ -8,20 +8,55 @@ from .serializers import CustomerSerializer
 
 
 class CustomerListCreateView(generics.ListCreateAPIView):
-    queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
+    queryset = Customer.objects.none()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['email']
     search_fields = ['first_name', 'last_name', 'email', 'phone_number']
     ordering_fields = ['first_name', 'last_name', 'created_at']
     ordering = ['-created_at']
 
+    def get_queryset(self):
+        # During schema generation (swagger_fake_view) or for anonymous users
+        # accessing `.request.user.organization` will raise — return an
+        # empty queryset so the schema generator can inspect the view safely.
+        if getattr(self, 'swagger_fake_view', False):
+            return Customer.objects.none()
+
+        user = getattr(self.request, 'user', None)
+        if user is None or getattr(user, 'is_anonymous', True):
+            return Customer.objects.none()
+
+        # Scope customers to the user's organization
+        return Customer.objects.filter(organization=user.organization)
+
+    def perform_create(self, serializer):
+        # Set organization automatically on create. During schema generation
+        # there may be no authenticated user, so guard accordingly.
+        user = getattr(self.request, 'user', None)
+        org = None
+        if user is not None and not getattr(user, 'is_anonymous', True):
+            org = getattr(user, 'organization', None)
+        serializer.save(organization=org)
+
 
 class CustomerDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
+    queryset = Customer.objects.none()
+
+    def get_queryset(self):
+        # During schema generation or for anonymous users return empty
+        if getattr(self, 'swagger_fake_view', False):
+            return Customer.objects.none()
+
+        user = getattr(self.request, 'user', None)
+        if user is None or getattr(user, 'is_anonymous', True):
+            return Customer.objects.none()
+
+        # Only allow access to customers within the user's organization
+        return Customer.objects.filter(organization=user.organization)
 
 
 @api_view(['GET'])
@@ -31,9 +66,14 @@ def customer_orders(request, customer_id):
     from orders.models import Order
     from orders.serializers import OrderSerializer
     
+    # Guard access to request.user for schema generation
+    user = getattr(request, 'user', None)
+    if user is None or getattr(user, 'is_anonymous', True):
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
     try:
-        customer = Customer.objects.get(id=customer_id)
-        orders = Order.objects.filter(customer=customer)
+        customer = Customer.objects.get(id=customer_id, organization=user.organization)
+        orders = Order.objects.filter(customer=customer, organization=user.organization)
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
     except Customer.DoesNotExist:

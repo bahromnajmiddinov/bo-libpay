@@ -1,11 +1,11 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from user.models import CustomUser
 from .models import Customer
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = CustomUser
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         extra_kwargs = {
             'password': {'write_only': True}
@@ -28,7 +28,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user_data = validated_data.pop('user', None)
         if user_data:
-            user = User.objects.create_user(**user_data)
+            user = CustomUser.objects.create_user(**user_data)
             validated_data['user'] = user
         customer = Customer.objects.create(**validated_data)
         return customer
@@ -41,7 +41,7 @@ class CustomerSerializer(serializers.ModelSerializer):
                 setattr(user, attr, value)
             user.save()
         elif user_data and not instance.user:
-            user = User.objects.create_user(**user_data)
+            user = CustomUser.objects.create_user(**user_data)
             instance.user = user
         
         for attr, value in validated_data.items():

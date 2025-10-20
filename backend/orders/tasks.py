@@ -96,23 +96,28 @@ Best regards,
         )
         
         # Create reminder record
+        # Attach the organization's reference if available
+        org = getattr(installment, 'organization', None) or getattr(installment.order, 'organization', None)
         PaymentReminder.objects.create(
             installment=installment,
             reminder_type='email',
             scheduled_date=timezone.now(),
             sent_date=timezone.now(),
             status='sent',
-            message=message
+            message=message,
+            organization=org
         )
         
     except Exception as e:
         # Create failed reminder record
+        org = getattr(installment, 'organization', None) or getattr(installment.order, 'organization', None)
         PaymentReminder.objects.create(
             installment=installment,
             reminder_type='email',
             scheduled_date=timezone.now(),
             status='failed',
-            message=f"Failed to send email: {str(e)}"
+            message=f"Failed to send email: {str(e)}",
+            organization=org
         )
         raise e
 
@@ -126,22 +131,26 @@ def create_in_app_reminder(installment, reminder_type):
             days_overdue = (timezone.now().date() - installment.due_date).days
             message = f"Payment of ${installment.amount} is {days_overdue} days overdue for Order #{installment.order.id}"
         
+        org = getattr(installment, 'organization', None) or getattr(installment.order, 'organization', None)
         PaymentReminder.objects.create(
             installment=installment,
             reminder_type='in_app',
             scheduled_date=timezone.now(),
             sent_date=timezone.now(),
             status='sent',
-            message=message
+            message=message,
+            organization=org
         )
         
     except Exception as e:
+        org = getattr(installment, 'organization', None) or getattr(installment.order, 'organization', None)
         PaymentReminder.objects.create(
             installment=installment,
             reminder_type='in_app',
             scheduled_date=timezone.now(),
             status='failed',
-            message=f"Failed to create in-app reminder: {str(e)}"
+            message=f"Failed to create in-app reminder: {str(e)}",
+            organization=org
         )
 
 
@@ -168,7 +177,8 @@ def generate_installments_for_order(order_id):
                 installment_number=i,
                 amount=monthly_payment,
                 due_date=due_date,
-                status='pending'
+                status='pending',
+                organization=getattr(order, 'organization', None)
             )
         
         return f"Generated {order.installment_count} installments for Order #{order_id}"

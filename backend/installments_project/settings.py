@@ -53,7 +53,10 @@ INSTALLED_APPS = [
     'products',
     'customers',
     'orders',
+    'user',
 ]
+
+AUTH_USER_MODEL = 'user.CustomUser'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

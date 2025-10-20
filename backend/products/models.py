@@ -1,13 +1,13 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from core.models import Seller
+from core.models import BaseModel
 
 
-class Category(models.Model):
+class Category(BaseModel):
     """Product categories"""
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
@@ -16,7 +16,7 @@ class Category(models.Model):
         verbose_name_plural = "Categories"
 
 
-class Product(models.Model):
+class Product(BaseModel):
     """Model representing a product"""
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE, related_name='products')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
@@ -29,8 +29,6 @@ class Product(models.Model):
     is_active = models.BooleanField(default=True)
     min_installments = models.PositiveIntegerField(default=1)
     max_installments = models.PositiveIntegerField(default=12)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name} - ${self.price}"
