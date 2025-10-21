@@ -96,9 +96,15 @@ class OrderSerializer(serializers.ModelSerializer):
         
         order = Order.objects.create(**validated_data)
         
-        # Generate installments asynchronously
+        # Generate installments asynchronously. If the Celery broker (Redis)
+        # is unavailable, do not fail the HTTP request — log and continue.
         from .tasks import generate_installments_for_order
-        generate_installments_for_order.delay(order.id)
+        try:
+            generate_installments_for_order.delay(order.id)
+        except Exception as exc:
+            # Avoid importing logging configuration changes; use print as a
+            # minimal fallback so the error is visible in logs during dev.
+            print(f"Warning: could not queue generate_installments_for_order task: {exc}")
         
         return order
 
@@ -122,6 +128,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         # Generate installments asynchronously
         from .tasks import generate_installments_for_order
-        generate_installments_for_order.delay(order.id)
+        try:
+            generate_installments_for_order.delay(order.id)
+        except Exception as exc:
+            print(f"Warning: could not queue generate_installments_for_order task: {exc}")
         
         return order
