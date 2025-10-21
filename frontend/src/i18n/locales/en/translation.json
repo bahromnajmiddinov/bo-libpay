@@ -195,6 +195,8 @@
     "sku": "SKU",
     "price": "Price",
     "stock_quantity": "Stock Quantity",
+    "min_installments":"min_installments",
+    "max_installments":"max_installments",
     "installments": "Installments",
     "status": "Status",
     "actions": "Actions",

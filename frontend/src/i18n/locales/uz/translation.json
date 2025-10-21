@@ -195,6 +195,8 @@
     "sku": "SKU",
     "price": "Narxi",
     "stock_quantity": "Zaxira Miqdori",
+    "min_installments":"Minimum to'lovlar",
+    "max_installments":"Maksimal to'lovlar",
     "installments": "Bo'lib To'lash",
     "status": "Holati",
     "actions": "Amallar",

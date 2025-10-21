@@ -195,6 +195,8 @@
     "sku": "Артикул",
     "price": "Цена",
     "stock_quantity": "Количество в наличии",
+    "min_installments":"минимум два закона",
+    "max_installments":"максимальные взносы",
     "installments": "Рассрочка",
     "status": "Статус",
     "actions": "Действия",
