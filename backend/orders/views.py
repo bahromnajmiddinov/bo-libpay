@@ -100,13 +100,14 @@ class OrderListCreateView(generics.ListCreateAPIView):
         return OrderSerializer
 
     def perform_create(self, serializer):
-        # Ensure organization and created_by are set on new orders
+        # Ensure organization is set on new orders. Order model doesn't have
+        # a `created_by` field, so don't pass that here (it caused a TypeError).
         user = getattr(self.request, 'user', None)
         if user is None or getattr(user, 'is_anonymous', True):
-            serializer.save(created_by=None, organization=None)
+            serializer.save(organization=None)
             return
 
-        serializer.save(created_by=user, organization=getattr(user, 'organization', None))
+        serializer.save(organization=getattr(user, 'organization', None))
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):

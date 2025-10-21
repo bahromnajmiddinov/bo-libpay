@@ -90,12 +90,30 @@ def customer_stats(request):
     from orders.models import Order
     
     try:
-        seller = Seller.objects.get(user=request.user)
-        orders = Order.objects.filter(product__seller=seller)
-        customers = Customer.objects.filter(orders__in=orders).distinct()
-        
+        user = getattr(request, 'user', None)
+        if user is None or getattr(user, 'is_anonymous', True):
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Prefer organization attached to user; fallback to seller.organization
+        org = getattr(user, 'organization', None)
+        if org is None:
+            try:
+                seller = Seller.objects.get(user=user)
+                org = getattr(seller, 'organization', None)
+            except Seller.DoesNotExist:
+                org = None
+
+        if org is None:
+            return Response({'error': 'Organization not found for user'}, status=status.HTTP_404_NOT_FOUND)
+
+        # All customers belonging to the organization
+        customers = Customer.objects.filter(organization=org)
+
         total_customers = customers.count()
+
+        # Active customers are those with orders in this organization with approved/active status
         active_customers = customers.filter(
+            orders__organization=org,
             orders__status__in=['approved', 'active']
         ).distinct().count()
         
